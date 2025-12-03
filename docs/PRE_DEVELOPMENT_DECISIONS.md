@@ -50,9 +50,9 @@
 |------|--------|------|
 | 初期対応サービス | Spotify / Apple Music / YouTube Music | **Spotify** |
 | 認証フローの扱い | ライブラリ内処理 / トークンのみ受取 | **トークンのみ受取** |
-| 非同期パターン | Promise / AsyncIterator / Observable | |
-| エラーハンドリング | カスタムエラー / Result型 / 例外 | |
-| ページネーション | カーソル / オフセット / AsyncIterator | |
+| 非同期パターン | Promise / AsyncIterator / Observable | **Promise + AsyncIterator** |
+| エラーハンドリング | カスタムエラー / Result型 / 例外 | **カスタムエラー** |
+| ページネーション | カーソル / オフセット / AsyncIterator | **AsyncIterator + カーソル** |
 
 ### 検討メモ
 
@@ -98,6 +98,9 @@
 |------|------|----------|------|
 | 2025-12-02 | 初期対応サービス | Spotify | 公式TypeScript SDKが充実、無料で開始可能、基本機能（検索・プレイリスト・再生制御）は利用可能。2024年11月の制限（Recommendations等）を理解した上で共通インターフェースを設計できる |
 | 2025-12-02 | 認証フローの扱い | トークンのみ受取 | シンプルに開始、環境非依存、責務分離。将来的に認証ヘルパーを追加してユーザー負担を減らす可能性あり |
+| 2025-12-02 | 非同期パターン | Promise + AsyncIterator | 単一リソースはPromise、リスト取得はAsyncIteratorで逐次処理。シンプルかつメモリ効率が良い |
+| 2025-12-02 | エラーハンドリング | カスタムエラー | 標準的なパターン、instanceof判定可、TypeScriptユーザーに馴染み深い |
+| 2025-12-02 | ページネーション | AsyncIterator + カーソル | 高レベルAPIはAsyncIteratorで簡潔に、必要に応じてカーソルで細かく制御可能 |
 
 ---
 
