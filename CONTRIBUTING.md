@@ -70,8 +70,14 @@ Follow the specification to implement the feature:
 
 ### 6. Test
 
+Tests are written using Bun Test and should be derived from specification requirements.
+
 ```bash
+# Run all tests
 bun test
+
+# Run specific test file
+bun test <file>
 ```
 
 ### 7. Code Review
@@ -142,18 +148,6 @@ bun run lint
 
 # Format code
 bun run format
-```
-
-## Testing
-
-Tests are written using Bun Test and should be derived from specification requirements.
-
-```bash
-# Run all tests
-bun test
-
-# Run specific test file
-bun test <file>
 ```
 
 ## Pull Request Guidelines
