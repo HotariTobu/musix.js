@@ -17,7 +17,6 @@
 | 項目 | 選択肢 | 決定 |
 |------|--------|------|
 | ランタイム | Node.js / Bun | **Bun** |
-| Node.jsバージョン | 18.x / 20.x / 22.x | |
 | モジュール形式 | ESM / CommonJS / デュアル | |
 | バンドラー | tsup / tsdown / Rollup / esbuild / Bunup | **tsdown** |
 | TypeScriptターゲット | ES2020 / ES2022 / ESNext | |
@@ -102,8 +101,8 @@
 | 2025-12-02 | 非同期パターン | Promise + AsyncIterator | 単一リソースはPromise、リスト取得はAsyncIteratorで逐次処理。シンプルかつメモリ効率が良い |
 | 2025-12-02 | エラーハンドリング | カスタムエラー | 標準的なパターン、instanceof判定可、TypeScriptユーザーに馴染み深い |
 | 2025-12-02 | ページネーション | AsyncIterator + カーソル | 高レベルAPIはAsyncIteratorで簡潔に、必要に応じてカーソルで細かく制御可能 |
-| 2025-12-04 | ランタイム | Bun | 開発環境のみの影響、高速、TypeScriptネイティブ対応 |
-| 2025-12-04 | バンドラー | tsdown | VoidZero社（Vite/Rolldown）がバック、Rolldownベースで高速、tsup互換で移行容易、活発にメンテ |
+| 2025-12-04 | ランタイム | Bun | 開発環境のみの影響、高速、TypeScriptネイティブ対応。tsdownはNAPI-RS経由でRolldownを使用するが、BunはNAPI-RSをほぼ完全サポート（2025年時点） |
+| 2025-12-04 | バンドラー | tsdown | VoidZero社（Vite/Rolldown）がバック、Rolldownベースで高速、tsup互換で移行容易、活発にメンテ。Bunでの動作は実験的だがNAPI-RS互換により技術的障壁は低い |
 
 ---
 
