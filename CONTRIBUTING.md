@@ -74,7 +74,15 @@ Follow the specification to implement the feature:
 bun test
 ```
 
-### 7. Create a Pull Request
+### 7. Code Review
+
+Review your changes with Claude Code:
+
+```
+/review
+```
+
+### 8. Create a Pull Request
 
 - Link to the related specification
 - Ensure all tests pass
