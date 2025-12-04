@@ -85,7 +85,7 @@ bun test <file>
 Review your changes with Claude Code:
 
 ```
-/review
+/code-review
 ```
 
 ### 8. Check Code
