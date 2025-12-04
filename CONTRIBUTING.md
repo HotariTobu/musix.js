@@ -2,6 +2,10 @@
 
 Thank you for your interest in contributing to musix.js!
 
+## Important
+
+All changes to this repository must be made through **Claude Code**. Manual edits are not allowed.
+
 ## Language
 
 All documentation, code comments, commit messages, and issues must be written in **English**.
