@@ -52,20 +52,20 @@ Ensure the specification is complete and correct:
 git checkout -b feature/<feature-name>
 ```
 
-### 4. Implement
-
-Follow the specification to implement the feature:
-
-```
-/spec-implement <spec-filename>
-```
-
-### 5. Add LLM Documentation (if adding libraries)
+### 4. Add LLM Documentation (if adding libraries)
 
 When adding new libraries or tools, generate LLM documentation:
 
 ```
 /generate-llms <library-docs-url>
+```
+
+### 5. Implement
+
+Follow the specification to implement the feature:
+
+```
+/spec-implement <spec-filename>
 ```
 
 ### 6. Test
