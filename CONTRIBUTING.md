@@ -30,7 +30,13 @@ bun install
 
 This project follows **Spec-Driven Development**. All features must have a specification before implementation.
 
-### 1. Create a Specification
+### 1. Create a Branch
+
+```bash
+git checkout -b feature/<feature-name>
+```
+
+### 2. Create a Specification
 
 Before writing any code, create a specification in `docs/specs/`:
 
@@ -38,18 +44,12 @@ Before writing any code, create a specification in `docs/specs/`:
 /spec-new <feature-name>
 ```
 
-### 2. Review the Specification
+### 3. Review the Specification
 
 Ensure the specification is complete and correct:
 
 ```
 /spec-review <spec-filename>
-```
-
-### 3. Create a Branch
-
-```bash
-git checkout -b feature/<feature-name>
 ```
 
 ### 4. Add LLM Documentation (if adding libraries)
