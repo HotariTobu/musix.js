@@ -17,11 +17,11 @@
 | 項目 | 選択肢 | 決定 |
 |------|--------|------|
 | ランタイム | Node.js / Bun | **Bun** |
-| モジュール形式 | ESM / CommonJS / デュアル | |
+| モジュール形式 | ESM / CommonJS / デュアル | **デュアル** |
 | バンドラー | tsup / tsdown / Rollup / esbuild / Bunup | **tsdown** |
-| TypeScriptターゲット | ES2020 / ES2022 / ESNext | |
+| TypeScriptターゲット | ES2020 / ES2022 / ESNext | **ESNext** |
 | テストフレームワーク | Vitest（詳細設定） | |
-| リンター/フォーマッター | ESLint + Prettier ルール | |
+| リンター/フォーマッター | ESLint + Prettier / Biome | **Biome** |
 
 ### 検討メモ
 
@@ -103,6 +103,9 @@
 | 2025-12-02 | ページネーション | AsyncIterator + カーソル | 高レベルAPIはAsyncIteratorで簡潔に、必要に応じてカーソルで細かく制御可能 |
 | 2025-12-04 | ランタイム | Bun | 開発環境のみの影響、高速、TypeScriptネイティブ対応。tsdownはNAPI-RS経由でRolldownを使用するが、BunはNAPI-RSをほぼ完全サポート（2025年時点） |
 | 2025-12-04 | バンドラー | tsdown | VoidZero社（Vite/Rolldown）がバック、Rolldownベースで高速、tsup互換で移行容易、活発にメンテ。Bunでの動作は実験的だがNAPI-RS互換により技術的障壁は低い |
+| 2025-12-04 | モジュール形式 | デュアル | ESM/CJS両対応で幅広い環境をサポート |
+| 2025-12-04 | TypeScriptターゲット | ESNext | 後から変更可能、最新構文を使用 |
+| 2025-12-04 | リンター/フォーマッター | Biome | 高速、リンターとフォーマッターが統一、設定が簡単 |
 
 ---
 
