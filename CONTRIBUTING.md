@@ -2,6 +2,12 @@
 
 Thank you for your interest in contributing to musix.js!
 
+## Language
+
+All documentation, code comments, commit messages, and issues must be written in **English**.
+
+Exception: Specification content (`docs/specs/*.md`) may be written in Japanese.
+
 ## Development Setup
 
 ### Prerequisites
