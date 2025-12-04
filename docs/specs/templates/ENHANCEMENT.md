@@ -1,7 +1,7 @@
 # Enhancement: [Enhancement Name]
 
 > Template for enhancements to existing features.
-> Filename: `NNNN-enhancement-name.md`
+> Filename: `yyyymmdd-enhance-name.md`
 
 ## Overview
 

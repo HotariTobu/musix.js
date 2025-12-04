@@ -1,7 +1,7 @@
 # Refactor: [Refactor Description]
 
 > Template for code refactoring.
-> Filename: `NNNN-refactor-name.md`
+> Filename: `yyyymmdd-refact-name.md`
 
 ## Overview
 

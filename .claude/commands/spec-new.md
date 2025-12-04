@@ -10,12 +10,13 @@ Feature name: $ARGUMENTS
    - **Fix**: Bug fix (use `docs/specs/templates/FIX.md`)
    - **Refactor**: Code refactoring (use `docs/specs/templates/REFACTOR.md`)
 
-2. Check existing specifications in `docs/specs/` and determine the next sequence number
+2. Create a new specification file based on the selected template
+   - Filename: `yyyymmdd-[type]-name.md`
+     - `yyyymmdd`: Date (e.g., `20251204`)
+     - `[type]`: `feat` | `enhance` | `fix` | `refact`
+     - `name`: Kebab-case name (e.g., `spotify-adapter`)
 
-3. Create a new specification file based on the selected template
-   - Filename: `NNNN-feature-name.md` (NNNN is a 4-digit sequence number)
-
-4. Work with the user to fill in the sections according to the template
+3. Work with the user to fill in the sections according to the template
 
 ## Guidelines
 
