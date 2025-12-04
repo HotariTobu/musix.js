@@ -88,7 +88,15 @@ Review your changes with Claude Code:
 /review
 ```
 
-### 8. Create a Pull Request
+### 8. Check Code
+
+Run linting and formatting checks:
+
+```bash
+bun run check:code
+```
+
+### 9. Create a Pull Request
 
 - Link to the related specification
 - Ensure all tests pass
@@ -136,18 +144,6 @@ feat: add Spotify adapter
 fix: handle rate limit errors
 
 docs: update API documentation
-```
-
-## Code Style
-
-This project uses [Biome](https://biomejs.dev/) for linting and formatting.
-
-```bash
-# Check for lint errors
-bun run lint
-
-# Format code
-bun run format
 ```
 
 ## Pull Request Guidelines
