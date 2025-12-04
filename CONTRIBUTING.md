@@ -6,6 +6,12 @@ Thank you for your interest in contributing to musix.js!
 
 All changes to this repository must be made through **Claude Code**. Manual edits are not allowed.
 
+When adding new libraries or tools, you **must** also generate LLM documentation using the `/generate-llms` command. This ensures that AI assistants can effectively use the added dependencies.
+
+```
+/generate-llms <library-docs-url>
+```
+
 ## Language
 
 All documentation, code comments, commit messages, and issues must be written in **English**.
