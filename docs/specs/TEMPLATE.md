@@ -1,46 +1,46 @@
-# 仕様書: [機能名]
+# Specification: [Feature Name]
 
-> このファイルをコピーして新しい仕様書を作成してください。
-> ファイル名: `NNNN-機能名.md`（NNNNは連番）
+> Copy this file to create a new specification.
+> Filename: `NNNN-feature-name.md` (NNNN is a sequence number)
 
-## 概要
+## Overview
 
-<!-- この機能が何をするのか、1-2文で説明 -->
+<!-- Describe what this feature does in 1-2 sentences -->
 
-## 背景・目的
+## Background & Purpose
 
-<!-- なぜこの機能が必要なのか -->
+<!-- Why is this feature needed? -->
 
-## 要件
+## Requirements
 
-### 機能要件
+### Functional Requirements
 
-<!-- 実装すべき機能の一覧 -->
+<!-- List of features to implement -->
 
-- [ ] 要件1
-- [ ] 要件2
-- [ ] 要件3
+- [ ] Requirement 1
+- [ ] Requirement 2
+- [ ] Requirement 3
 
-### 非機能要件
+### Non-Functional Requirements
 
-<!-- パフォーマンス、セキュリティ、互換性など -->
+<!-- Performance, security, compatibility, etc. -->
 
-- [ ] 要件1
+- [ ] Requirement 1
 
-## API設計
+## API Design
 
-### 関数/メソッド
+### Functions/Methods
 
 ```typescript
 /**
- * 関数の説明
- * @param param1 - パラメータの説明
- * @returns 戻り値の説明
+ * Function description
+ * @param param1 - Parameter description
+ * @returns Return value description
  */
 function exampleFunction(param1: Type): ReturnType;
 ```
 
-### 型定義
+### Type Definitions
 
 ```typescript
 interface ExampleInterface {
@@ -49,39 +49,39 @@ interface ExampleInterface {
 }
 ```
 
-## 使用例
+## Usage Examples
 
 ```typescript
-// 基本的な使用例
-import { exampleFunction } from 'musix.js';
+// Basic usage example
+import { exampleFunction } from 'musix';
 
 const result = exampleFunction(param);
 ```
 
-## エラーハンドリング
+## Error Handling
 
-| エラー種別 | 条件 | メッセージ |
-|-----------|------|-----------|
-| TypeError | 無効な引数が渡された場合 | "Invalid argument: ..." |
+| Error Type | Condition | Message |
+|------------|-----------|---------|
+| TypeError | When invalid argument is passed | "Invalid argument: ..." |
 
-## テスト要件
+## Test Requirements
 
-### 正常系
+### Happy Path
 
-- [ ] テストケース1
-- [ ] テストケース2
+- [ ] Test case 1
+- [ ] Test case 2
 
-### 異常系
+### Error Cases
 
-- [ ] エラーケース1
-- [ ] エラーケース2
+- [ ] Error case 1
+- [ ] Error case 2
 
-## 実装メモ
+## Implementation Notes
 
-<!-- 実装時の注意点、参考情報など -->
+<!-- Notes for implementation, references, etc. -->
 
-## 変更履歴
+## Change History
 
-| 日付 | バージョン | 変更内容 | 担当者 |
-|------|-----------|---------|--------|
-| YYYY-MM-DD | 1.0 | 初版作成 | - |
+| Date | Version | Changes | Author |
+|------|---------|---------|--------|
+| YYYY-MM-DD | 1.0 | Initial version | - |

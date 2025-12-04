@@ -1,92 +1,92 @@
 # musix.js
 
-複数の音楽ストリーミングサービスを統一的に利用するためのインターフェースを提供するJavaScriptライブラリ
+A JavaScript library that provides a unified interface for multiple music streaming services.
 
-## プロジェクトゴール
+## Project Goal
 
-異なる音楽ストリーミングサービス（Spotify、Apple Music、YouTube Musicなど）のAPIを抽象化し、統一されたインターフェースで操作できるようにする。
+Abstract APIs from different music streaming services (Spotify, Apple Music, YouTube Music, etc.) and provide a unified interface to interact with them.
 
-### 想定される主要機能
+### Key Features
 
-- 楽曲検索
-- プレイリスト管理
-- 再生制御
-- ユーザーライブラリへのアクセス
-- サービス間でのデータ変換
+- Track search
+- Playlist management
+- Playback control
+- User library access
+- Cross-service data conversion
 
-### 設計方針
+### Design Principles
 
-- **アダプターパターン**: 各サービスのAPIをアダプターで抽象化
-- **プラグイン方式**: 新しいサービスを簡単に追加可能
-- **型安全**: TypeScriptで型定義を提供
+- **Adapter Pattern**: Abstract each service's API through adapters
+- **Plugin Architecture**: Easy to add new services
+- **Type Safety**: Provide TypeScript type definitions
 
 ---
 
-このリポジトリは**仕様書駆動開発（Spec-Driven Development）**を採用しています。
+This repository follows **Spec-Driven Development**.
 
-## 開発ワークフロー
+## Development Workflow
 
-### 1. 仕様書の作成
-新機能や変更を行う前に、必ず `docs/specs/` に仕様書を作成してください。
-
-```
-/spec-new <機能名>
-```
-
-### 2. 仕様書のレビュー
-仕様書の内容を確認し、問題がないかチェックします。
+### 1. Create a Specification
+Before implementing any feature or change, create a specification in `docs/specs/`.
 
 ```
-/spec-review <仕様書ファイル名>
+/spec-new <feature-name>
 ```
 
-### 3. 実装
-仕様書に基づいてコードを実装します。
+### 2. Review the Specification
+Review the specification content and check for issues.
 
 ```
-/spec-implement <仕様書ファイル名>
+/spec-review <spec-filename>
 ```
 
-## ディレクトリ構造
+### 3. Implement
+Implement the code based on the specification.
+
+```
+/spec-implement <spec-filename>
+```
+
+## Directory Structure
 
 ```
 musix.js/
-├── CLAUDE.md           # このファイル（Claude Code用の設定）
+├── CLAUDE.md           # This file (Claude Code configuration)
 ├── docs/
-│   ├── specs/          # 仕様書を格納
-│   │   └── TEMPLATE.md # 仕様書テンプレート
-│   └── PRE_DEVELOPMENT_DECISIONS.md  # 開発前決定事項
+│   ├── specs/          # Specifications
+│   │   └── TEMPLATE.md # Specification template
+│   └── PRE_DEVELOPMENT_DECISIONS.md  # Pre-development decisions
 ├── src/
-│   ├── core/           # 共通型、エラー、インターフェース
-│   └── adapters/       # 各サービスのアダプター
+│   ├── core/           # Shared types, errors, interfaces
+│   └── adapters/       # Service adapters
 │       ├── spotify/
 │       ├── apple-music/
 │       └── youtube-music/
-├── tests/              # テストコード
+├── tests/              # Test code
 └── .claude/
-    └── commands/       # カスタムスラッシュコマンド
+    └── commands/       # Custom slash commands
 ```
 
-## 仕様書駆動開発のルール
+## Spec-Driven Development Rules
 
-1. **コードより先に仕様書を書く** - 実装前に必ず仕様書を作成する
-2. **仕様書は変更履歴を残す** - 仕様変更時は履歴セクションを更新する
-3. **実装は仕様書に従う** - 仕様書に記載されていない機能は実装しない
-4. **テストは仕様書から導出する** - テストケースは仕様書の要件に基づく
+1. **Write specs before code** - Always create a specification before implementation
+2. **Keep change history** - Update the history section when modifying specs
+3. **Follow the spec** - Do not implement features not described in the spec
+4. **Derive tests from specs** - Test cases should be based on spec requirements
 
-## コマンド
+## Commands
 
-### 開発用コマンド
+### Development Commands
 ```bash
-bun install    # 依存関係のインストール
-bun test       # テストの実行
-bun run build  # ビルド
-bun run lint   # リントチェック
-bun run format # フォーマット
+bun install    # Install dependencies
+bun test       # Run tests
+bun run build  # Build
+bun run lint   # Lint check
+bun run format # Format code
 ```
 
-## コーディング規約
+## Coding Standards
 
-- TypeScriptを使用
-- Biomeでリント・フォーマット
-- テストはBun Testを使用
+- Use TypeScript
+- Use Biome for linting and formatting
+- Use Bun Test for testing
