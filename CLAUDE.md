@@ -53,9 +53,15 @@
 musix.js/
 ├── CLAUDE.md           # このファイル（Claude Code用の設定）
 ├── docs/
-│   └── specs/          # 仕様書を格納
-│       └── TEMPLATE.md # 仕様書テンプレート
-├── src/                # ソースコード
+│   ├── specs/          # 仕様書を格納
+│   │   └── TEMPLATE.md # 仕様書テンプレート
+│   └── PRE_DEVELOPMENT_DECISIONS.md  # 開発前決定事項
+├── src/
+│   ├── core/           # 共通型、エラー、インターフェース
+│   └── adapters/       # 各サービスのアダプター
+│       ├── spotify/
+│       ├── apple-music/
+│       └── youtube-music/
 ├── tests/              # テストコード
 └── .claude/
     └── commands/       # カスタムスラッシュコマンド
@@ -72,14 +78,15 @@ musix.js/
 
 ### 開発用コマンド
 ```bash
-npm install    # 依存関係のインストール
-npm test       # テストの実行
-npm run build  # ビルド
-npm run lint   # リントチェック
+bun install    # 依存関係のインストール
+bun test       # テストの実行
+bun run build  # ビルド
+bun run lint   # リントチェック
+bun run format # フォーマット
 ```
 
 ## コーディング規約
 
 - TypeScriptを使用
-- ESLint + Prettierでコードフォーマット
-- テストはVitestを使用
+- Biomeでリント・フォーマット
+- テストはBun Testを使用
