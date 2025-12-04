@@ -86,6 +86,7 @@ Review your changes with Claude Code:
 
 ```
 /code-review
+/code-review-security
 ```
 
 ### 8. Check Code
