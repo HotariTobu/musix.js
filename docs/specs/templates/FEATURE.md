@@ -1,7 +1,7 @@
 # Feature: [Feature Name]
 
 > Template for new features.
-> Filename: `NNNN-feature-name.md`
+> Filename: `yyyymmdd-feat-name.md`
 
 ## Overview
 

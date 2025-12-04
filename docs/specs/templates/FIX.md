@@ -1,7 +1,7 @@
 # Fix: [Bug Description]
 
 > Template for bug fixes.
-> Filename: `NNNN-fix-name.md`
+> Filename: `yyyymmdd-fix-name.md`
 
 ## Overview
 
