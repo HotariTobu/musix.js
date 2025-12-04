@@ -6,12 +6,6 @@ Thank you for your interest in contributing to musix.js!
 
 All changes to this repository must be made through **Claude Code**. Manual edits are not allowed.
 
-When adding new libraries or tools, you **must** also generate LLM documentation using the `/generate-llms` command. This ensures that AI assistants can effectively use the added dependencies.
-
-```
-/generate-llms <library-docs-url>
-```
-
 ## Language
 
 All documentation, code comments, commit messages, and issues must be written in **English**.
@@ -66,13 +60,21 @@ Follow the specification to implement the feature:
 /spec-implement <spec-filename>
 ```
 
-### 5. Test
+### 5. Add LLM Documentation (if adding libraries)
+
+When adding new libraries or tools, generate LLM documentation:
+
+```
+/generate-llms <library-docs-url>
+```
+
+### 6. Test
 
 ```bash
 bun test
 ```
 
-### 6. Create a Pull Request
+### 7. Create a Pull Request
 
 - Link to the related specification
 - Ensure all tests pass
