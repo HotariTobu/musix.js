@@ -1,30 +1,13 @@
 # musix.js
 
-A JavaScript library that provides a unified interface for multiple music streaming services.
-
-## Project Goal
-
-Abstract APIs from different music streaming services (Spotify, Apple Music, YouTube Music, etc.) and provide a unified interface to interact with them.
-
-### Key Features
-
-- Track search
-- Playlist management
-- Playback control
-- User library access
-- Cross-service data conversion
-
-### Design Principles
-
-- **Adapter Pattern**: Abstract each service's API through adapters
-- **Plugin Architecture**: Easy to add new services
-- **Type Safety**: Provide TypeScript type definitions
+See [README.md](README.md) for project overview.
 
 ## Directory Structure
 
 ```
 musix.js/
 ├── CLAUDE.md           # This file (Claude Code configuration)
+├── README.md           # Project overview
 ├── CONTRIBUTING.md     # Contributing guide
 ├── docs/
 │   ├── specs/          # Specifications
