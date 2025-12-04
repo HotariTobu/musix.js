@@ -20,7 +20,7 @@
 | モジュール形式 | ESM / CommonJS / デュアル | **デュアル** |
 | バンドラー | tsup / tsdown / Rollup / esbuild / Bunup | **tsdown** |
 | TypeScriptターゲット | ES2020 / ES2022 / ESNext | **ESNext** |
-| テストフレームワーク | Vitest（詳細設定） | |
+| テストフレームワーク | Vitest / Bun Test | **Bun Test** |
 | リンター/フォーマッター | ESLint + Prettier / Biome | **Biome** |
 
 ### 検討メモ
@@ -106,6 +106,7 @@
 | 2025-12-04 | モジュール形式 | デュアル | ESM/CJS両対応で幅広い環境をサポート |
 | 2025-12-04 | TypeScriptターゲット | ESNext | 後から変更可能、最新構文を使用 |
 | 2025-12-04 | リンター/フォーマッター | Biome | 高速、リンターとフォーマッターが統一、設定が簡単 |
+| 2025-12-04 | テストフレームワーク | Bun Test | 高速、Bun環境との統一、APIモック中心のテストには十分。Fake Timersは不完全だが本ライブラリでは不要。必要になれば将来移行可能 |
 
 ---
 
