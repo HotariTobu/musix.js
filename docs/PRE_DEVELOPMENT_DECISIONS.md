@@ -4,11 +4,11 @@
 
 ## ステータス
 
-- [ ] 1. 技術スタック・環境設定
-- [ ] 2. パッケージ設計
-- [ ] 3. APIデザイン
+- [x] 1. 技術スタック・環境設定
+- [x] 2. パッケージ設計
+- [x] 3. APIデザイン
 - [ ] 4. アーキテクチャ詳細
-- [ ] 5. 開発プロセス
+- [x] 5. 開発プロセス
 
 ---
 
@@ -83,7 +83,7 @@
 | ブランチ戦略 | Git Flow / GitHub Flow / Trunk-based | **GitHub Flow** |
 | バージョニング | SemVer ルール | **SemVer** |
 | CI/CD | GitHub Actions 設定 | **GitHub Actions** |
-| ドキュメント生成 | TypeDoc / VitePress / なし | |
+| ドキュメント生成 | TypeDoc / VitePress / なし | **TypeDoc** |
 | 変更履歴管理 | CHANGELOG / Conventional Commits | **Conventional Commits** |
 
 ### 検討メモ
@@ -115,6 +115,7 @@
 | 2025-12-04 | バージョニング | SemVer | 標準的なバージョニング規則 |
 | 2025-12-04 | CI/CD | GitHub Actions | テスト・ビルド・公開の自動化 |
 | 2025-12-04 | 変更履歴管理 | Conventional Commits | コミットメッセージの規則化、自動CHANGELOG生成可能 |
+| 2025-12-04 | ドキュメント生成 | TypeDoc | TSDocからの自動生成で最も人気（GitHub Stars 8,300+、週240万DL）、設定がシンプル、単体でHTMLサイト生成可能、プラグインエコシステムが豊富 |
 
 ---
 
