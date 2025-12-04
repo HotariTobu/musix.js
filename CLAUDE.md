@@ -47,6 +47,15 @@ This repository follows **Spec-Driven Development**. See [CONTRIBUTING.md](CONTR
 | `/spec-review <file>` | Review a specification |
 | `/spec-implement <file>` | Implement based on specification |
 
+## Web Search Rules
+
+When performing web searches to obtain up-to-date information:
+
+1. **Avoid specifying years** - Do not include specific years in search queries to get the latest information
+2. **Verify current date first** - If a year must be specified, always check the current date before searching
+
+These rules ensure that search results are not limited to outdated information.
+
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for commands, coding standards, and guidelines.
