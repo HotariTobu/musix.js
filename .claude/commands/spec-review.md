@@ -1,36 +1,36 @@
-# 仕様書と実装のレビュー
+# Review Specification and Implementation
 
-対象: $ARGUMENTS
+Target: $ARGUMENTS
 
-## タスク
+## Task
 
-1. 指定された仕様書ファイルを `docs/specs/` から読み込んでください
-2. 関連する実装コードを特定してください
-3. 以下の観点でレビューを実施してください：
+1. Read the specified specification file from `docs/specs/`
+2. Identify related implementation code
+3. Conduct a review from the following perspectives:
 
-### 仕様書のレビュー
-- [ ] 概要は明確か
-- [ ] 要件は具体的で実装可能か
-- [ ] API設計は適切か（命名、型定義、パラメータ）
-- [ ] エラーハンドリングは網羅されているか
-- [ ] テスト要件は十分か
-- [ ] エッジケースは考慮されているか
+### Specification Review
+- [ ] Is the overview clear?
+- [ ] Are requirements specific and implementable?
+- [ ] Is the API design appropriate (naming, type definitions, parameters)?
+- [ ] Is error handling comprehensive?
+- [ ] Are test requirements sufficient?
+- [ ] Are edge cases considered?
 
-### 実装のレビュー（実装がある場合）
-- [ ] 仕様書の機能要件を全て満たしているか
-- [ ] 仕様書のAPI設計に従っているか
-- [ ] 仕様書のエラーハンドリングが実装されているか
-- [ ] 仕様書にない機能が追加されていないか
+### Implementation Review (if implementation exists)
+- [ ] Does it meet all functional requirements in the spec?
+- [ ] Does it follow the API design in the spec?
+- [ ] Is error handling from the spec implemented?
+- [ ] Are there any features not in the spec?
 
-### テストのレビュー（テストがある場合）
-- [ ] 仕様書のテスト要件を網羅しているか
-- [ ] 正常系・異常系のテストがあるか
+### Test Review (if tests exist)
+- [ ] Do tests cover spec test requirements?
+- [ ] Are there happy path and error case tests?
 
-## 出力
+## Output
 
-レビュー結果を以下の形式で報告してください：
+Report review results in the following format:
 
-1. **適合項目** - 仕様と実装が一致している点
-2. **不適合項目** - 仕様と実装が異なる点
-3. **改善提案** - 仕様または実装の改善案
-4. **未実装項目** - まだ実装されていない仕様
+1. **Compliant Items** - Points where spec and implementation match
+2. **Non-Compliant Items** - Points where spec and implementation differ
+3. **Improvement Suggestions** - Suggestions for spec or implementation
+4. **Unimplemented Items** - Spec items not yet implemented

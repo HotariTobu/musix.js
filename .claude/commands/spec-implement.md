@@ -1,28 +1,28 @@
-# 仕様書に基づいて実装
+# Implement Based on Specification
 
-仕様書: $ARGUMENTS
+Specification: $ARGUMENTS
 
-## タスク
+## Task
 
-1. 指定された仕様書ファイルを `docs/specs/` から読み込んでください
-2. 仕様書の内容を分析し、実装計画を立ててください
-3. 仕様書に記載された要件に従って実装してください：
-   - API設計セクションの型定義とインターフェースを実装
-   - 機能要件を満たすコードを作成
-   - エラーハンドリングセクションに従ってエラー処理を実装
-4. テスト要件セクションに基づいてテストを作成してください
-5. 実装完了後、仕様書の要件チェックリストを更新してください
+1. Read the specified specification file from `docs/specs/`
+2. Analyze the specification content and create an implementation plan
+3. Implement according to the requirements in the specification:
+   - Implement type definitions and interfaces from the API Design section
+   - Create code that meets functional requirements
+   - Implement error handling according to the Error Handling section
+4. Create tests based on the Test Requirements section
+5. After implementation, update the requirements checklist in the specification
 
-## ガイドライン
+## Guidelines
 
-- 仕様書に記載されていない機能は実装しない
-- 仕様書の型定義に厳密に従う
-- テストは仕様書のテスト要件を網羅する
-- 実装中に仕様の不明点が見つかった場合は、実装前に確認する
+- Do not implement features not described in the specification
+- Strictly follow the type definitions in the specification
+- Tests must cover the test requirements in the specification
+- If unclear points in the spec are found during implementation, confirm before implementing
 
-## 確認事項
+## Pre-Implementation Checklist
 
-実装前に以下を確認してください：
-- [ ] 仕様書は最新版か
-- [ ] 全ての要件が明確か
-- [ ] 依存関係は解決されているか
+Confirm the following before implementation:
+- [ ] Is the specification up to date?
+- [ ] Are all requirements clear?
+- [ ] Are dependencies resolved?

@@ -11,7 +11,11 @@ musix.js/
 ├── CONTRIBUTING.md     # Contributing guide
 ├── docs/
 │   ├── specs/          # Specifications
-│   │   └── TEMPLATE.md # Specification template
+│   │   └── templates/  # Specification templates
+│   │       ├── FEATURE.md
+│   │       ├── ENHANCEMENT.md
+│   │       ├── FIX.md
+│   │       └── REFACTOR.md
 │   └── PRE_DEVELOPMENT_DECISIONS.md  # Pre-development decisions
 ├── src/
 │   ├── core/           # Shared types, errors, interfaces
