@@ -1,11 +1,11 @@
-# Specification: [Feature Name]
+# Feature: [Feature Name]
 
-> Copy this file to create a new specification.
-> Filename: `NNNN-feature-name.md` (NNNN is a sequence number)
+> Template for new features.
+> Filename: `NNNN-feature-name.md`
 
 ## Overview
 
-<!-- Describe what this feature does in 1-2 sentences -->
+<!-- What does this feature do? (1-2 sentences) -->
 
 ## Background & Purpose
 
@@ -15,15 +15,11 @@
 
 ### Functional Requirements
 
-<!-- List of features to implement -->
-
 - [ ] Requirement 1
 - [ ] Requirement 2
 - [ ] Requirement 3
 
 ### Non-Functional Requirements
-
-<!-- Performance, security, compatibility, etc. -->
 
 - [ ] Requirement 1
 
@@ -52,7 +48,6 @@ interface ExampleInterface {
 ## Usage Examples
 
 ```typescript
-// Basic usage example
 import { exampleFunction } from 'musix';
 
 const result = exampleFunction(param);
