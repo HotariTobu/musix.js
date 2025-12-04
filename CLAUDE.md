@@ -20,38 +20,12 @@ Abstract APIs from different music streaming services (Spotify, Apple Music, You
 - **Plugin Architecture**: Easy to add new services
 - **Type Safety**: Provide TypeScript type definitions
 
----
-
-This repository follows **Spec-Driven Development**.
-
-## Development Workflow
-
-### 1. Create a Specification
-Before implementing any feature or change, create a specification in `docs/specs/`.
-
-```
-/spec-new <feature-name>
-```
-
-### 2. Review the Specification
-Review the specification content and check for issues.
-
-```
-/spec-review <spec-filename>
-```
-
-### 3. Implement
-Implement the code based on the specification.
-
-```
-/spec-implement <spec-filename>
-```
-
 ## Directory Structure
 
 ```
 musix.js/
 ├── CLAUDE.md           # This file (Claude Code configuration)
+├── CONTRIBUTING.md     # Contributing guide
 ├── docs/
 │   ├── specs/          # Specifications
 │   │   └── TEMPLATE.md # Specification template
@@ -67,26 +41,25 @@ musix.js/
     └── commands/       # Custom slash commands
 ```
 
-## Spec-Driven Development Rules
+## Spec-Driven Development
+
+This repository follows **Spec-Driven Development**. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
+
+### Rules
 
 1. **Write specs before code** - Always create a specification before implementation
 2. **Keep change history** - Update the history section when modifying specs
 3. **Follow the spec** - Do not implement features not described in the spec
 4. **Derive tests from specs** - Test cases should be based on spec requirements
 
-## Commands
+### Slash Commands
 
-### Development Commands
-```bash
-bun install    # Install dependencies
-bun test       # Run tests
-bun run build  # Build
-bun run lint   # Lint check
-bun run format # Format code
-```
+| Command | Description |
+|---------|-------------|
+| `/spec-new <name>` | Create a new specification |
+| `/spec-review <file>` | Review a specification |
+| `/spec-implement <file>` | Implement based on specification |
 
-## Coding Standards
+## Development
 
-- Use TypeScript
-- Use Biome for linting and formatting
-- Use Bun Test for testing
+See [CONTRIBUTING.md](CONTRIBUTING.md) for commands, coding standards, and guidelines.
