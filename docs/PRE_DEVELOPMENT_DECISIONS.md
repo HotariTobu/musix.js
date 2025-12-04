@@ -80,11 +80,11 @@
 
 | 項目 | 選択肢 | 決定 |
 |------|--------|------|
-| ブランチ戦略 | Git Flow / GitHub Flow / Trunk-based | |
-| バージョニング | SemVer ルール | |
-| CI/CD | GitHub Actions 設定 | |
+| ブランチ戦略 | Git Flow / GitHub Flow / Trunk-based | **GitHub Flow** |
+| バージョニング | SemVer ルール | **SemVer** |
+| CI/CD | GitHub Actions 設定 | **GitHub Actions** |
 | ドキュメント生成 | TypeDoc / VitePress / なし | |
-| 変更履歴管理 | CHANGELOG / Conventional Commits | |
+| 変更履歴管理 | CHANGELOG / Conventional Commits | **Conventional Commits** |
 
 ### 検討メモ
 
@@ -111,6 +111,10 @@
 | 2025-12-04 | 公開スコープ | public | npmに公開 |
 | 2025-12-04 | エントリーポイント | サブパスエクスポート | 各アダプターを個別にimport可能、バンドルサイズ削減、依存関係分離 |
 | 2025-12-04 | 依存関係方針 | 最小化 | 外部依存を極力減らし、軽量なライブラリを維持 |
+| 2025-12-04 | ブランチ戦略 | GitHub Flow | シンプル、PRベースの開発 |
+| 2025-12-04 | バージョニング | SemVer | 標準的なバージョニング規則 |
+| 2025-12-04 | CI/CD | GitHub Actions | テスト・ビルド・公開の自動化 |
+| 2025-12-04 | 変更履歴管理 | Conventional Commits | コミットメッセージの規則化、自動CHANGELOG生成可能 |
 
 ---
 
