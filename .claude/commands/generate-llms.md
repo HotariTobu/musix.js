@@ -9,11 +9,11 @@ allowed-tools: Bash, Read, Write, WebFetch
 **Input:** $ARGUMENTS
 
 - `$1` = Target website URL (required)
-- `$2` = Output directory name (optional, defaults to `docs/{domain}-llms`)
+- `$2` = Output directory name (optional, defaults to `docs/llms-txts{domain}`)
 
 Examples:
-- `/generate-llms https://fastht.ml` → `docs/fastht-llms/`
-- `/generate-llms https://docs.python.org python-docs` → `docs/python-docs/`
+- `/generate-llms https://fastht.ml` → `docs/llms-txts/fastht/`
+- `/generate-llms https://docs.python.org python-docs` → `python-docs/`
 
 ---
 
