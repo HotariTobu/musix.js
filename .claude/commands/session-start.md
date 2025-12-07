@@ -26,7 +26,8 @@ Start a coding session with progress review and planning.
 
 3. **Load spec context**
    - Read `docs/specs/<spec-name>/spec.md`
-   - Read `docs/specs/<spec-name>/progress.json` (if exists)
+   - Read `docs/specs/<spec-name>/progress.json`
+   - If `progress.json` doesn't exist, stop and ask user to run `/spec-new` first
 
 4. **Run preflight check**
    ```bash
@@ -80,6 +81,6 @@ Start a coding session with progress review and planning.
 
 - Focus on ONE requirement per session (not "when possible" - always)
 - If a requirement is too large, split into sub-tasks before starting
-- If no progress.json exists, run `/spec-new` first to create it
+- If no progress.json exists, stop and prompt user to run `/spec-new` first (do not proceed)
 - If all requirements pass, suggest running final verification
 - If preflight check fails, fix before starting new work

@@ -28,7 +28,7 @@ Display progress summary of all specifications.
 
 | Spec | Status | Progress | Last Updated | Blockers |
 |------|--------|----------|--------------|----------|
-| core-interfaces | in_progress | 3/5 | 2024-12-10 | None |
+| core-interfaces | in_progress | 3/5 | 2025-12-07 | None |
 | spotify-adapter | pending | 0/8 | - | API approval |
 | apple-music | not_started | - | - | - |
 
