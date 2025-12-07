@@ -1,7 +1,7 @@
 ---
 description: Create a new specification with progress.json
 argument-hint: <name>
-allowed-tools: Bash, Read, Write, Glob, TodoWrite
+allowed-tools: Bash(git *), Read, Write, Glob, TodoWrite, AskUserQuestion
 ---
 
 # Create a New Specification

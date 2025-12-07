@@ -1,7 +1,7 @@
 ---
 description: Review a specification and its implementation
 argument-hint: <spec-name>
-allowed-tools: Read, Glob, Grep
+allowed-tools: Read, Glob, Grep, Task
 ---
 
 # Review Specification and Implementation
