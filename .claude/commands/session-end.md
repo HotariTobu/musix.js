@@ -36,7 +36,15 @@ End the current coding session with progress update and structured commit.
    }
    ```
 
-4. **Create structured commit**
+4. **Run quality gate (before commit)**
+   ```bash
+   bun run check:code  # Lint and format check
+   bun test            # All tests must pass
+   ```
+   - If quality gate fails, fix issues before proceeding
+   - Do NOT skip this step - broken commits waste future sessions
+
+5. **Create structured commit**
    - Stage all relevant changes
    - Create commit with Conventional Commits subject (max 72 chars)
    - Include structured body:
@@ -59,7 +67,7 @@ End the current coding session with progress update and structured commit.
    - <blocker or "None">
    ```
 
-5. **Verify clean state**
+6. **Verify clean state**
    ```bash
    git status
    ```
@@ -89,3 +97,5 @@ End the current coding session with progress update and structured commit.
 - Keep commit subject under 72 characters
 - Notes should be actionable for next session
 - If tests are failing, do NOT mark requirements as passed
+- Always include "Next session should start with..." in notes
+- Leave the codebase in a state where the next session can start immediately
