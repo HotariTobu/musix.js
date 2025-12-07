@@ -43,9 +43,8 @@ This repository follows **Spec-Driven Development**. See [CONTRIBUTING.md](CONTR
 
 | Command | Description |
 |---------|-------------|
-| `/spec-new <name>` | Create a new specification |
+| `/spec-new <name>` | Create a new specification with progress.json |
 | `/spec-review <file>` | Review a specification |
-| `/spec-implement <file>` | Implement based on specification |
 
 ## Web Search Rules
 
@@ -93,6 +92,13 @@ Run `/session-end` to:
 
 Rules to prevent common failure patterns in long-running agent sessions.
 
+### Preflight Check
+
+Run `./preflight.sh` to verify codebase health. This script is used by:
+- CI (before merge)
+- `/session-start` (before starting work)
+- `/session-end` (before committing)
+
 ### Preventing Context Exhaustion
 
 - Focus on **ONE requirement per session**
@@ -100,13 +106,33 @@ Rules to prevent common failure patterns in long-running agent sessions.
 - Always read existing code with Read tool before writing new code
 - Do not attempt to implement multiple features at once
 
+#### Requirement Size Guidelines
+
+A requirement is **TOO LARGE** if:
+- Implementation touches more than 3 files
+- Expected to take more than 50 tool calls
+- Contains "and" connecting distinct features
+
+**Split strategy:**
+1. Identify sub-tasks
+2. Create temporary sub-requirements (e.g., FR-001a, FR-001b)
+3. Complete each in separate session
+4. Mark parent requirement as passed only when all sub-tasks complete
+
+### Test Integrity
+
+- **NEVER delete or modify existing tests** to make them pass
+- If a test fails, fix the implementation, not the test
+- Exception: Test is genuinely incorrect (document reason in commit)
+- New functionality must have corresponding new tests
+
 ### Preventing Premature Completion
 
 A requirement can only be marked as `passes: true` when ALL of the following are met:
 
-1. Related tests exist and pass (`bun test`)
-2. Code quality checks pass (`bun run check:code`)
-3. Manual verification completed (when applicable)
+1. `./preflight.sh` passes (tests + code quality)
+2. Manual verification completed (when applicable)
+3. You have actually verified the behavior, not assumed it works
 
 **"Probably works" = `passes: false`**
 
@@ -115,8 +141,25 @@ Never mark a requirement as passed based on assumption. If you cannot verify, le
 ### Session Boundaries
 
 - Start each session by reading progress.json and recent git history
-- End each session with a quality gate and structured commit
+- End each session with a quality gate (`./preflight.sh`) and structured commit
 - Leave the codebase ready for the next session to start immediately
+
+### Recovery from Failed Sessions
+
+If a session ends with broken state:
+1. `git stash` or `git reset --soft HEAD~1` to preserve work
+2. Run `/session-start` to re-orient
+3. Document what went wrong in blockers
+4. Split the failed requirement into smaller pieces
+
+## Implementation Guidelines
+
+Rules for implementing features based on specifications.
+
+- Do not implement features not described in the specification
+- Strictly follow the type definitions in the specification
+- Tests must cover the test requirements in the specification
+- If unclear points are found during implementation, confirm before implementing
 
 ## Development
 

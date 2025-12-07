@@ -10,13 +10,37 @@ Feature name: $ARGUMENTS
    - **Fix**: Bug fix (use `docs/specs/templates/FIX.md`)
    - **Refactor**: Code refactoring (use `docs/specs/templates/REFACTOR.md`)
 
-2. Create a new specification file based on the selected template
-   - Filename: `yyyymmdd-[type]-name.md`
+2. Create spec directory and files:
+   - Directory: `docs/specs/yyyymmdd-[type]-name/`
      - `yyyymmdd`: Date (e.g., `20251204`)
      - `[type]`: `feat` | `enhance` | `fix` | `refact`
      - `name`: Kebab-case name (e.g., `spotify-adapter`)
+   - Create `spec.md` based on the selected template
+   - Create `progress.json` with all requirements set to `passes: false`
 
-3. Work with the user to fill in the sections according to the template
+3. Work with the user to fill in the spec.md sections
+
+4. After spec.md is complete, generate progress.json:
+   ```json
+   {
+     "status": "pending",
+     "lastUpdated": "<today>",
+     "requirements": [
+       { "id": "FR-001", "passes": false },
+       { "id": "FR-002", "passes": false }
+     ],
+     "blockers": [],
+     "notes": ""
+   }
+   ```
+   - Extract all requirement IDs from spec.md (FR-*, NFR-*, TR-*)
+   - Set all `passes` to `false`
+
+5. Create initial commit:
+   ```bash
+   git add docs/specs/<spec-name>/
+   git commit -m "docs(<spec-name>): add specification"
+   ```
 
 ## Guidelines
 
@@ -24,3 +48,4 @@ Feature name: $ARGUMENTS
 - Avoid ambiguous expressions; detail to an implementable level
 - Include TypeScript type definitions
 - Consider edge cases
+- Ensure all requirements have unique IDs for progress tracking
