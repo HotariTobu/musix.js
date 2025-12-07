@@ -1,3 +1,9 @@
+---
+description: Create a new specification with progress.json
+argument-hint: <name>
+allowed-tools: Bash, Read, Write, Glob, TodoWrite
+---
+
 # Create a New Specification
 
 Feature name: $ARGUMENTS
