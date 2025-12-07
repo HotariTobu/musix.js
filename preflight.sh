@@ -1,11 +1,5 @@
 #!/bin/bash
-# preflight.sh - Quality gate for CI, session-start, and session-end
-#
-# This script verifies that the codebase is in a healthy state.
-# It should pass before:
-# - Merging code (CI)
-# - Starting a coding session (session-start)
-# - Committing changes (session-end)
+# Quality gate script (CI, session-start, session-end)
 
 echo "=== Preflight Check ==="
 

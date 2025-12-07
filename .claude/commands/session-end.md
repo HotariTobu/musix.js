@@ -1,6 +1,6 @@
 ---
 description: End session with progress update and structured commit
-allowed-tools: Bash(git *), Bash(./preflight.sh), Read, Edit, Write, Glob, TodoWrite
+allowed-tools: Bash(git *), Bash(./preflight.sh | tail -2), Read, Edit, Write, Glob, TodoWrite
 ---
 
 # End Session
@@ -31,7 +31,7 @@ End the current coding session with progress update and structured commit.
 
 4. **Run preflight check (quality gate)**
    ```bash
-   ./preflight.sh
+   ./preflight.sh | tail -2
    ```
    - If preflight fails, fix issues before proceeding
    - Do NOT skip this step - broken commits waste future sessions

@@ -1,7 +1,7 @@
 ---
 description: Start a coding session with progress review and planning
 argument-hint: [spec-name]
-allowed-tools: Bash(git *), Bash(./preflight.sh), Read, Glob, TodoWrite
+allowed-tools: Bash(git *), Bash(./preflight.sh | tail -2), Read, Glob, TodoWrite
 ---
 
 # Start Session
@@ -31,7 +31,7 @@ Start a coding session with progress review and planning.
 
 4. **Run preflight check**
    ```bash
-   ./preflight.sh
+   ./preflight.sh | tail -2
    ```
    - If preflight fails, prioritize fixing issues before new work
    - Document any environment issues as blockers
