@@ -52,11 +52,6 @@ This repository follows **Spec-Driven Development**.
 | `/session-start [spec-name]` | At the start of a coding session |
 | `/session-end` | At the end of a coding session |
 
-## Web Search Rules
-
-1. **Avoid specifying years** - Do not include specific years in search queries
-2. **Verify current date first** - If a year must be specified, check the current date before searching
-
 ## Agent Guardrails
 
 Rules to prevent common failure patterns in long-running agent sessions.
