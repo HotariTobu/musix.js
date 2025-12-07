@@ -13,15 +13,17 @@
 
 ## Requirements
 
+<!-- Each requirement must have a unique ID for progress tracking -->
+
 ### Functional Requirements
 
-- [ ] Requirement 1
-- [ ] Requirement 2
-- [ ] Requirement 3
+- [ ] FR-001: Requirement 1
+- [ ] FR-002: Requirement 2
+- [ ] FR-003: Requirement 3
 
 ### Non-Functional Requirements
 
-- [ ] Requirement 1
+- [ ] NFR-001: Requirement 1
 
 ## API Design
 
@@ -63,13 +65,13 @@ const result = exampleFunction(param);
 
 ### Happy Path
 
-- [ ] Test case 1
-- [ ] Test case 2
+- [ ] TR-001: Test case 1
+- [ ] TR-002: Test case 2
 
 ### Error Cases
 
-- [ ] Error case 1
-- [ ] Error case 2
+- [ ] TR-003: Error case 1
+- [ ] TR-004: Error case 2
 
 ## Implementation Notes
 

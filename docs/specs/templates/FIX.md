@@ -25,8 +25,8 @@
 
 ## Test Requirements
 
-- [ ] Test to verify the fix
-- [ ] Regression test
+- [ ] TR-001: Test to verify the fix
+- [ ] TR-002: Regression test
 
 ## Implementation Notes
 

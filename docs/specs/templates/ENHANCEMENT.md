@@ -17,10 +17,10 @@
 
 ## Proposed Changes
 
-<!-- What changes will be made? -->
+<!-- What changes will be made? Each change must have a unique ID for progress tracking -->
 
-- [ ] Change 1
-- [ ] Change 2
+- [ ] CH-001: Change 1
+- [ ] CH-002: Change 2
 
 ## API Changes
 
@@ -36,8 +36,8 @@ function existingFunction(param1: Type, param2?: NewType): ReturnType;
 
 ## Test Requirements
 
-- [ ] Test case 1
-- [ ] Test case 2
+- [ ] TR-001: Test case 1
+- [ ] TR-002: Test case 2
 
 ## Implementation Notes
 

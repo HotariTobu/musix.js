@@ -1,0 +1,69 @@
+# Start Session
+
+Spec name (optional): $ARGUMENTS
+
+## Task
+
+Start a coding session with progress review and planning.
+
+### Steps
+
+1. **Get current branch name**
+   ```bash
+   git branch --show-current
+   ```
+
+2. **Identify target spec**
+   - If spec-name argument is provided: Use `docs/specs/<spec-name>/`
+   - Else: Infer from branch name (e.g., `feature/spotify-adapter` -> search for `*spotify*`)
+   - If not found: Ask user which spec to work on
+
+3. **Load spec context**
+   - Read `docs/specs/<spec-name>/spec.md`
+   - Read `docs/specs/<spec-name>/progress.json` (if exists)
+
+4. **Review recent history**
+   ```bash
+   git log --oneline -5
+   ```
+
+5. **Analyze progress**
+   - Identify incomplete requirements (where `passes: false`)
+   - Check for blockers
+   - Read notes from previous session
+
+6. **Create session plan**
+   - Recommend next task based on incomplete requirements
+   - Provide focused plan for this session
+   - Estimate scope (keep sessions focused on 1-2 requirements)
+
+## Output Format
+
+```
+## Session Start: <spec-name>
+
+### Current Status
+- Status: <pending|in_progress|completed>
+- Progress: <X/Y requirements passed>
+- Last updated: <date>
+
+### Previous Notes
+<notes from progress.json>
+
+### Blockers
+<list of blockers or "None">
+
+### Recommended Next Task
+<specific requirement to work on>
+
+### Session Plan
+1. <step 1>
+2. <step 2>
+...
+```
+
+## Guidelines
+
+- Focus on ONE requirement per session when possible
+- If no progress.json exists, this is a new spec - start from first requirement
+- If all requirements pass, suggest running final verification
