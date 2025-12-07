@@ -74,6 +74,6 @@ Start a coding session with progress review and planning.
 
 - Focus on ONE requirement per session (not "when possible" - always)
 - If a requirement is too large, split into sub-tasks before starting
-- If no progress.json exists, this is a new spec - start from first requirement
+- If no progress.json exists, run `/spec-new` first to create it
 - If all requirements pass, suggest running final verification
-- If environment verification fails, fix before starting new work
+- If preflight check fails, fix before starting new work

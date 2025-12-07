@@ -1,10 +1,10 @@
 # Review Specification and Implementation
 
-Target: $ARGUMENTS
+Spec name: $ARGUMENTS
 
 ## Task
 
-1. Read the specified specification file from `docs/specs/`
+1. Read the specification from `docs/specs/<spec-name>/spec.md`
 2. Identify related implementation code
 3. Conduct a review from the following perspectives:
 

@@ -62,10 +62,12 @@ When adding new libraries or tools, generate LLM documentation:
 
 ### 5. Implement
 
-Follow the specification to implement the feature:
+Use the session workflow to implement the feature:
 
 ```
-/spec-implement <spec-filename>
+/session-start <spec-name>   # Start a session
+# ... implement one requirement at a time ...
+/session-end                 # End session with progress update
 ```
 
 ### 6. Test
