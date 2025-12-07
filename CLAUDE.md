@@ -68,7 +68,7 @@ Before writing any code, create a specification in `docs/specs/`:
 Ensure the specification is complete and correct:
 
 ```
-/spec-review <spec-filename>
+Review docs/specs/<spec-name>/spec.md using spec-reviewer
 ```
 
 ### 4. Design Review
