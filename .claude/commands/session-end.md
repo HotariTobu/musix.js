@@ -17,24 +17,12 @@ End the current coding session with progress update and structured commit.
    ```
 
 3. **Update progress.json**
+   - If `progress.json` doesn't exist, run `/spec-new` first
    - Update `passes` for completed requirements
    - Update `lastUpdated` to today's date
    - Update `notes` with context for next session
    - Update `status` if all requirements pass
    - Add any new `blockers` discovered
-
-   If `progress.json` doesn't exist, create it:
-   ```json
-   {
-     "status": "in_progress",
-     "lastUpdated": "<today>",
-     "requirements": [
-       { "id": "<from spec>", "passes": false }
-     ],
-     "blockers": [],
-     "notes": "<session summary>"
-   }
-   ```
 
 4. **Run preflight check (quality gate)**
    ```bash
