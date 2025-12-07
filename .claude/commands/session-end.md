@@ -22,7 +22,7 @@ End the current coding session with progress update and structured commit.
    ```
 
 3. **Update progress.json**
-   - If `progress.json` doesn't exist, run `/spec-new` first
+   - If `progress.json` doesn't exist, stop and prompt user to run `/spec-new` first
    - Update `passes` for completed requirements
    - Update `lastUpdated` to today's date
    - Update `notes` with context for next session
