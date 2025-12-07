@@ -111,13 +111,18 @@ Generate LLM documentation before implementation using the `llms-generator` agen
 Generate llms.txt from https://example.com/docs
 ```
 
-**Every session**:
+**Every session** (TDD):
 
-1. Implement one requirement
-2. Generate and run tests using the `test-generator` agent:
+1. Generate tests from spec using the `test-generator` agent:
    ```
-   Generate tests for <requirement> based on docs/specs/<spec-name>/spec.md using test-generator
+   Generate tests from docs/specs/<spec-name>/spec.md using test-generator
    ```
+2. Run tests (should fail):
+   ```bash
+   bun test <file>
+   ```
+3. Implement to make tests pass
+4. Run tests again (should pass):
    ```bash
    bun test <file>
    ```
