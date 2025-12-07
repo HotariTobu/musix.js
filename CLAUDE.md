@@ -9,13 +9,17 @@ musix.js/
 ├── CLAUDE.md           # This file (Claude Code configuration)
 ├── README.md           # Project overview
 ├── CONTRIBUTING.md     # Contributing guide
+├── preflight.sh        # Quality gate script (CI, session-start, session-end)
 ├── docs/
-│   ├── specs/          # Specifications
-│   │   └── templates/  # Specification templates
-│   │       ├── FEATURE.md
-│   │       ├── ENHANCEMENT.md
-│   │       ├── FIX.md
-│   │       └── REFACTOR.md
+│   ├── specs/          # Specifications (each spec has its own directory)
+│   │   ├── templates/  # Specification templates
+│   │   │   ├── FEATURE.md
+│   │   │   ├── ENHANCEMENT.md
+│   │   │   ├── FIX.md
+│   │   │   └── REFACTOR.md
+│   │   └── <spec-name>/  # Example: 20251207-feat-spotify-adapter/
+│   │       ├── spec.md       # Specification document
+│   │       └── progress.json # Progress tracking
 │   └── PRE_DEVELOPMENT_DECISIONS.md  # Pre-development decisions
 ├── src/
 │   ├── core/           # Shared types, errors, interfaces
