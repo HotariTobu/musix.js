@@ -21,15 +21,19 @@
 
 ## Proposed Fix
 
-<!-- How will the bug be fixed? -->
+<!-- How will the bug be fixed? Each fix item must have a unique ID for progress tracking -->
+
+- [ ] FX-001: Fix description 1
+- [ ] FX-002: Fix description 2
 
 ## Acceptance Criteria
 
 <!--
 Define acceptance criteria using Given-When-Then (GWT) format.
+Each criterion must have a unique ID (AC-XXX) linked to a fix item (FX-XXX).
 -->
 
-### AC-001: Bug is fixed
+### AC-001: [Linked to FX-001]
 
 - **Given**: [Condition that previously caused the bug]
 - **When**: [Action that triggered the bug]
@@ -37,7 +41,7 @@ Define acceptance criteria using Given-When-Then (GWT) format.
   - [Expected correct behavior]
   - Bug no longer occurs
 
-### AC-002: Regression test
+### AC-002: [Linked to FX-001, Regression]
 
 - **Given**: [Normal usage condition]
 - **When**: [Related actions are performed]

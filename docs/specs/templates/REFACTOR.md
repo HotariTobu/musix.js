@@ -7,7 +7,7 @@
 
 <!-- What is being refactored? (1-2 sentences) -->
 
-## Motivation
+## Background & Purpose
 
 <!-- Why is this refactoring needed? -->
 
@@ -36,9 +36,10 @@ None / List breaking changes
 
 <!--
 Define acceptance criteria using Given-When-Then (GWT) format.
+Each criterion must have a unique ID (AC-XXX) linked to a scope item (SC-XXX).
 -->
 
-### AC-001: Behavior unchanged
+### AC-001: [Linked to SC-001, Behavior Unchanged]
 
 - **Given**: [Existing usage pattern]
 - **When**: [Action performed using refactored code]
@@ -46,7 +47,7 @@ Define acceptance criteria using Given-When-Then (GWT) format.
   - Output is identical to before refactoring
   - All existing tests pass
 
-### AC-002: Code quality improved
+### AC-002: [Linked to SC-001, Code Quality]
 
 - **Given**: Refactoring is complete
 - **When**: Code is reviewed
