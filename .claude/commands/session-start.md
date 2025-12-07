@@ -31,8 +31,9 @@ Start a coding session with progress review and planning.
 
 5. **Review recent history**
    ```bash
-   git log --oneline -5
+   git log -1
    ```
+   - Read the full commit message, especially the "Next" section
 
 6. **Analyze progress**
    - Identify incomplete requirements (where `passes: false`)
