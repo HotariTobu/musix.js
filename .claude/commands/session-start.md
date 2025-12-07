@@ -1,3 +1,9 @@
+---
+description: Start a coding session with progress review and planning
+argument-hint: [spec-name]
+allowed-tools: Bash, Read, Glob, TodoWrite
+---
+
 # Start Session
 
 Spec name (optional): $ARGUMENTS

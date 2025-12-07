@@ -1,3 +1,8 @@
+---
+description: End session with progress update and structured commit
+allowed-tools: Bash, Read, Edit, Write, Glob, TodoWrite
+---
+
 # End Session
 
 ## Task

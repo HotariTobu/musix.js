@@ -1,3 +1,8 @@
+---
+description: Show progress summary of all specs
+allowed-tools: Read, Glob
+---
+
 # Project Status
 
 ## Task

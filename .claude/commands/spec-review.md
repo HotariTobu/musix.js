@@ -1,3 +1,9 @@
+---
+description: Review a specification and its implementation
+argument-hint: <spec-name>
+allowed-tools: Read, Glob, Grep
+---
+
 # Review Specification and Implementation
 
 Spec name: $ARGUMENTS
