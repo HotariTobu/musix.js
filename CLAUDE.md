@@ -51,7 +51,6 @@ This repository follows **Spec-Driven Development**.
 | `/spec-review <name>` | To review a specification and its implementation |
 | `/session-start [spec-name]` | At the start of a coding session |
 | `/session-end` | At the end of a coding session |
-| `/status` | To check progress of all specs |
 
 ## Web Search Rules
 
