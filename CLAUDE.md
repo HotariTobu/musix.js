@@ -38,21 +38,6 @@ musix.js/
     └── skills/         # Custom skills
 ```
 
-## Architecture Decision Records (ADR)
-
-Record significant technical decisions in `docs/adr/`.
-
-### When to Write an ADR
-
-- Adding or replacing a library/framework
-- Choosing between multiple implementation approaches
-- Adopting a new pattern or convention
-- Making trade-offs that affect maintainability or performance
-
-### Process
-
-Use the `tech-stack-adr` skill to guide technology selection and ADR creation.
-
 ## Spec-Driven Development
 
 This repository follows **Spec-Driven Development**.
@@ -86,34 +71,41 @@ Ensure the specification is complete and correct:
 /spec-review <spec-filename>
 ```
 
-### 4. Add LLM Documentation (if adding libraries)
+### 4. Tech Selection (if needed)
 
-When adding new libraries or tools, generate LLM documentation:
+Write an ADR (`docs/adr/`) when:
+- Adding or replacing a library/framework
+- Choosing between multiple implementation approaches
+- Adopting a new pattern or convention
+
+Use the `tech-stack-adr` skill to guide technology selection and create an ADR:
+
+### 5. Implement (Session Workflow)
+
+Each session focuses on **one requirement**. Repeat until all requirements are complete.
 
 ```
-/generate-llms <library-docs-url>
+/session-start <spec-name>
+# ... implement and test one requirement ...
+/session-end
 ```
 
-### 5. Implement
+**First session** (or when introducing new libraries/tools):
 
-Use the session workflow to implement the feature:
-
+Generate LLM documentation before implementation:
 ```
-/session-start <spec-name>   # Start a session
-# ... implement one requirement at a time ...
-/session-end                 # End session with progress update
+/generate-llms <docs-url>
 ```
 
-### 6. Test
+**Every session**:
 
-Tests are written using Bun Test and should be derived from specification requirements.
+1. Implement one requirement
+2. Write and run tests
+   ```bash
+   bun test <file>
+   ```
 
-```bash
-bun test              # Run all tests
-bun test <file>       # Run specific test file
-```
-
-### 7. Code Review
+### 6. Code Review
 
 Review your changes:
 
@@ -122,7 +114,7 @@ Review your changes:
 /code-review-security
 ```
 
-### 8. Check Code
+### 7. Check Code
 
 Run linting and formatting checks:
 
@@ -130,7 +122,7 @@ Run linting and formatting checks:
 bun run check:code
 ```
 
-### 9. Create a Pull Request
+### 8. Create a Pull Request
 
 - Link to the related specification
 - Ensure all tests pass
