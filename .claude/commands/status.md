@@ -16,8 +16,7 @@ Display progress summary of all specifications.
    - For each spec directory, check for `progress.json`
 
 2. **Collect status data**
-   - Read only `status`, `lastUpdated`, and count of `requirements` from each `progress.json`
-   - For specs without `progress.json`, mark as "Not started"
+   - Read `status`, `lastUpdated`, and count of `requirements` from each `progress.json`
 
 3. **Generate summary table**
 
@@ -29,14 +28,13 @@ Display progress summary of all specifications.
 | Spec | Status | Progress | Last Updated | Blockers |
 |------|--------|----------|--------------|----------|
 | core-interfaces | in_progress | 3/5 | 2025-12-07 | None |
-| spotify-adapter | pending | 0/8 | - | API approval |
-| apple-music | not_started | - | - | - |
+| spotify-adapter | pending | 0/8 | 2025-12-01 | API approval |
 
 ### Summary
 - Total specs: X
 - Completed: X
 - In progress: X
-- Not started: X
+- Pending: X
 
 ### Recommended Next Task
 Based on dependencies and current progress, consider working on: <spec-name>
@@ -45,6 +43,6 @@ Based on dependencies and current progress, consider working on: <spec-name>
 ## Guidelines
 
 - Keep output concise - only read status fields, not full spec content
-- Sort by status: in_progress first, then pending, then not_started, then completed
+- Sort by status: in_progress first, then pending, then completed
 - Highlight any blockers that need attention
 - If no specs exist, indicate that and suggest creating one with `/spec-new`
