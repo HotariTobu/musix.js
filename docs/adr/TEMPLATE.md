@@ -61,6 +61,13 @@ How will success be measured? e.g., "Bundle size stays under 10KB", "No type err
 
 - [YYYYMMDD-related-topic.md](./YYYYMMDD-related-topic.md)
 
+## Resources
+
+| Option | Documentation | Repository |
+|--------|---------------|------------|
+| {Option 1} | [docs](url) | [repo](url) |
+| {Option 2} | [docs](url) | [repo](url) |
+
 ## Sources
 
 - [Source 1](url)
