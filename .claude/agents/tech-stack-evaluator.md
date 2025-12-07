@@ -56,6 +56,11 @@ Provide your evaluation in this structured format:
 ### Overview
 [Brief description of what it is and its primary use case]
 
+### Official Resources
+- Documentation: [URL]
+- Repository: [URL]
+- Package: [npm/PyPI/etc. URL]
+
 ### Key Findings
 
 #### Strengths

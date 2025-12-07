@@ -92,9 +92,9 @@ Each session focuses on **one requirement**. Repeat until all requirements are c
 
 **First session** (or when introducing new libraries/tools):
 
-Generate LLM documentation before implementation:
+Generate LLM documentation before implementation using the `llms-generator` agent:
 ```
-/generate-llms <docs-url>
+Generate llms.txt from https://example.com/docs
 ```
 
 **Every session**:

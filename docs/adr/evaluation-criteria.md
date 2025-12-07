@@ -10,7 +10,7 @@ Technology evaluation criteria for this project (TypeScript library development)
 | TypeScript Support | 20% | Type definitions quality, TS-first design, generics support |
 | Lightweight | 15% | Bundle size impact, dependency count, tree-shaking support |
 | Security | 15% | Vulnerability history, maintenance frequency, dependency trustworthiness |
-| Documentation | 15% | Quality for AI consumption, llms.txt availability (supplement via `/generate-llms`) |
+| Documentation | 15% | Quality for AI consumption (llms.txt is bonus; well-organized docs suffice) |
 | Ecosystem | 10% | Community activity, maintenance status, long-term support |
 
 ## Scoring Scale
@@ -107,7 +107,7 @@ Is documentation sufficient for AI-assisted development?
 **Evaluation Questions:**
 - Is documentation comprehensive and up-to-date?
 - Are there code examples?
-- Is llms.txt available? (Can supplement via `/generate-llms`)
+- Is llms.txt available? (Bonus; well-organized docs suffice for `llms-generator`)
 - Is API reference complete?
 
 **Scoring:**
