@@ -56,6 +56,39 @@ When performing web searches to obtain up-to-date information:
 
 These rules ensure that search results are not limited to outdated information.
 
+## Session Protocol
+
+This project uses session management to maintain continuity across coding sessions.
+
+### Starting a Session
+
+Run `/session-start [spec-name]` to:
+- Load progress for the target spec
+- Review recent git history
+- Identify next incomplete requirement
+- Create a focused plan for this session
+
+### Ending a Session
+
+Run `/session-end` to:
+- Update progress.json for the worked spec
+- Create a commit with What/Why/Next/Blockers format
+- Ensure continuity for next session
+
+### Progress Tracking
+
+- Each spec folder contains `progress.json`
+- Only update `passes` field, never delete requirements
+- Mark `status: completed` only after all requirements verified
+
+### Slash Commands (Session)
+
+| Command | Description |
+|---------|-------------|
+| `/session-start [spec-name]` | Start a session with progress review |
+| `/session-end` | End session with progress update and commit |
+| `/status` | Show progress summary of all specs |
+
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for commands, coding standards, and guidelines.

@@ -147,6 +147,30 @@ fix: handle rate limit errors
 docs: update API documentation
 ```
 
+### Commit Body Format
+
+For `feat` and `fix` commits, include a structured body:
+
+```
+feat: add rate limit handling to Spotify adapter
+
+## What
+- Implemented exponential backoff for 429 responses
+- Added RetryableError class
+
+## Why
+- Spotify API has strict rate limits (180 req/min)
+
+## Next
+- Add unit tests for retry logic
+- Handle 503 Service Unavailable
+
+## Blockers
+- None
+```
+
+This format ensures session continuity by documenting what was done and what comes next.
+
 ## Pull Request Guidelines
 
 1. **Link the specification** - Every PR must reference its specification

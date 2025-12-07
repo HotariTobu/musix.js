@@ -21,10 +21,10 @@
 
 ## Scope
 
-<!-- What files/modules will be affected? -->
+<!-- What files/modules will be affected? Each item must have a unique ID for progress tracking -->
 
-- [ ] File/module 1
-- [ ] File/module 2
+- [ ] SC-001: File/module 1
+- [ ] SC-002: File/module 2
 
 ## Breaking Changes
 
@@ -34,8 +34,8 @@ None / List breaking changes
 
 ## Test Requirements
 
-- [ ] Existing tests pass
-- [ ] New tests (if needed)
+- [ ] TR-001: Existing tests pass
+- [ ] TR-002: New tests (if needed)
 
 ## Implementation Notes
 
