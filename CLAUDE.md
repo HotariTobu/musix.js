@@ -2,7 +2,13 @@
 
 > **Rule**: Do not add anything to CLAUDE.md unless it is necessary.
 
-See [README.md](README.md) for project overview and [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
+See [README.md](README.md) for project overview.
+
+## Language
+
+All documentation, code comments, commit messages, and issues must be written in **English**.
+
+Exception: Specification content (`docs/specs/*.md`) may be written in other languages.
 
 ## Directory Structure
 
@@ -10,15 +16,10 @@ See [README.md](README.md) for project overview and [CONTRIBUTING.md](CONTRIBUTI
 musix.js/
 ├── CLAUDE.md           # This file (Claude Code configuration)
 ├── README.md           # Project overview
-├── CONTRIBUTING.md     # Contributing guide
 ├── preflight.sh        # Quality gate script (CI, session-start, session-end)
 ├── docs/
 │   ├── specs/          # Specifications (each spec has its own directory)
 │   │   ├── templates/  # Specification templates
-│   │   │   ├── FEATURE.md
-│   │   │   ├── ENHANCEMENT.md
-│   │   │   ├── FIX.md
-│   │   │   └── REFACTOR.md
 │   │   └── <spec-name>/  # Example: 20251207-feat-spotify-adapter/
 │   │       ├── spec.md       # Specification document
 │   │       └── progress.json # Progress tracking
@@ -43,18 +44,140 @@ This repository follows **Spec-Driven Development**.
 3. **Follow the spec** - Do not implement features not described in the spec
 4. **Derive tests from specs** - Test cases should be based on spec requirements
 
-## Slash Commands
+## Development Workflow
 
-| Command | When to use |
-|---------|-------------|
-| `/spec-new <name>` | Before starting any new feature/fix |
-| `/spec-review <name>` | To review a specification and its implementation |
-| `/session-start [spec-name]` | At the start of a coding session |
-| `/session-end` | At the end of a coding session |
+### 1. Create a Branch
 
-## Agent Guardrails
+```bash
+git checkout -b feature/<feature-name>
+```
 
-Rules to prevent common failure patterns in long-running agent sessions.
+### 2. Create a Specification
+
+Before writing any code, create a specification in `docs/specs/`:
+
+```
+/spec-new <feature-name>
+```
+
+### 3. Review the Specification
+
+Ensure the specification is complete and correct:
+
+```
+/spec-review <spec-filename>
+```
+
+### 4. Add LLM Documentation (if adding libraries)
+
+When adding new libraries or tools, generate LLM documentation:
+
+```
+/generate-llms <library-docs-url>
+```
+
+### 5. Implement
+
+Use the session workflow to implement the feature:
+
+```
+/session-start <spec-name>   # Start a session
+# ... implement one requirement at a time ...
+/session-end                 # End session with progress update
+```
+
+### 6. Test
+
+Tests are written using Bun Test and should be derived from specification requirements.
+
+```bash
+bun test              # Run all tests
+bun test <file>       # Run specific test file
+```
+
+### 7. Code Review
+
+Review your changes:
+
+```
+/code-review
+/code-review-security
+```
+
+### 8. Check Code
+
+Run linting and formatting checks:
+
+```bash
+bun run check:code
+```
+
+### 9. Create a Pull Request
+
+- Link to the related specification
+- Ensure all tests pass
+- Request a review
+
+## Branch Naming
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Feature | `feature/<name>` | `feature/spotify-adapter` |
+| Bug fix | `fix/<name>` | `fix/auth-error` |
+| Documentation | `docs/<name>` | `docs/api-guide` |
+| Refactoring | `refactor/<name>` | `refactor/error-handling` |
+
+## Commit Messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/).
+
+### Format
+
+```
+<type>: <description>
+
+[optional body]
+```
+
+### Types
+
+| Type | Description |
+|------|-------------|
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `docs` | Documentation changes |
+| `refactor` | Code refactoring |
+| `test` | Adding or updating tests |
+| `chore` | Maintenance tasks |
+
+### Body Format (for feat/fix)
+
+```
+feat: add rate limit handling to Spotify adapter
+
+## What
+- Implemented exponential backoff for 429 responses
+- Added RetryableError class
+
+## Why
+- Spotify API has strict rate limits (180 req/min)
+
+## Next
+- Add unit tests for retry logic
+- Handle 503 Service Unavailable
+
+## Blockers
+- None
+```
+
+This format ensures session continuity by documenting what was done and what comes next.
+
+## Pull Request Guidelines
+
+1. **Link the specification** - Every PR must reference its specification
+2. **One feature per PR** - Keep PRs focused and small
+3. **All tests must pass** - Ensure CI is green
+4. **Request a review** - Wait for approval before merging
 
 ### Preflight Check
 
