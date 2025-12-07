@@ -1,6 +1,8 @@
 # musix.js
 
-See [README.md](README.md) for project overview.
+> **Rule**: Do not add anything to CLAUDE.md unless it is necessary.
+
+See [README.md](README.md) for project overview and [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
 
 ## Directory Structure
 
@@ -34,63 +36,27 @@ musix.js/
 
 ## Spec-Driven Development
 
-This repository follows **Spec-Driven Development**. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
-
-### Rules
+This repository follows **Spec-Driven Development**.
 
 1. **Write specs before code** - Always create a specification before implementation
 2. **Keep change history** - Update the history section when modifying specs
 3. **Follow the spec** - Do not implement features not described in the spec
 4. **Derive tests from specs** - Test cases should be based on spec requirements
 
-### Slash Commands
+## Slash Commands
 
-| Command | Description |
+| Command | When to use |
 |---------|-------------|
-| `/spec-new <name>` | Create a new specification with progress.json |
-| `/spec-review <file>` | Review a specification |
+| `/spec-new <name>` | Before starting any new feature/fix |
+| `/spec-review <name>` | To review a specification and its implementation |
+| `/session-start [spec-name]` | At the start of a coding session |
+| `/session-end` | At the end of a coding session |
+| `/status` | To check progress of all specs |
 
 ## Web Search Rules
 
-When performing web searches to obtain up-to-date information:
-
-1. **Avoid specifying years** - Do not include specific years in search queries to get the latest information
-2. **Verify current date first** - If a year must be specified, always check the current date before searching
-
-These rules ensure that search results are not limited to outdated information.
-
-## Session Protocol
-
-This project uses session management to maintain continuity across coding sessions.
-
-### Starting a Session
-
-Run `/session-start [spec-name]` to:
-- Load progress for the target spec
-- Review recent git history
-- Identify next incomplete requirement
-- Create a focused plan for this session
-
-### Ending a Session
-
-Run `/session-end` to:
-- Update progress.json for the worked spec
-- Create a commit with What/Why/Next/Blockers format
-- Ensure continuity for next session
-
-### Progress Tracking
-
-- Each spec folder contains `progress.json`
-- Only update `passes` field, never delete requirements
-- Mark `status: completed` only after all requirements verified
-
-### Slash Commands (Session)
-
-| Command | Description |
-|---------|-------------|
-| `/session-start [spec-name]` | Start a session with progress review |
-| `/session-end` | End session with progress update and commit |
-| `/status` | Show progress summary of all specs |
+1. **Avoid specifying years** - Do not include specific years in search queries
+2. **Verify current date first** - If a year must be specified, check the current date before searching
 
 ## Agent Guardrails
 
@@ -98,10 +64,7 @@ Rules to prevent common failure patterns in long-running agent sessions.
 
 ### Preflight Check
 
-Run `./preflight.sh` to verify codebase health. This script is used by:
-- CI (before merge)
-- `/session-start` (before starting work)
-- `/session-end` (before committing)
+Run `./preflight.sh` to verify codebase health. Used by CI, `/session-start`, and `/session-end`.
 
 ### Preventing Context Exhaustion
 
@@ -132,39 +95,17 @@ A requirement is **TOO LARGE** if:
 
 ### Preventing Premature Completion
 
-A requirement can only be marked as `passes: true` when ALL of the following are met:
+A requirement can only be marked as `passes: true` when:
 
-1. `./preflight.sh` passes (tests + code quality)
+1. `./preflight.sh` passes
 2. Manual verification completed (when applicable)
 3. You have actually verified the behavior, not assumed it works
 
 **"Probably works" = `passes: false`**
 
-Never mark a requirement as passed based on assumption. If you cannot verify, leave it as false and document what verification is needed.
-
-### Session Boundaries
-
-- Start each session by reading progress.json and recent git history
-- End each session with a quality gate (`./preflight.sh`) and structured commit
-- Leave the codebase ready for the next session to start immediately
-
 ### Recovery from Failed Sessions
 
-If a session ends with broken state:
 1. `git stash` or `git reset --soft HEAD~1` to preserve work
 2. Run `/session-start` to re-orient
 3. Document what went wrong in blockers
 4. Split the failed requirement into smaller pieces
-
-## Implementation Guidelines
-
-Rules for implementing features based on specifications.
-
-- Do not implement features not described in the specification
-- Strictly follow the type definitions in the specification
-- Tests must cover the test requirements in the specification
-- If unclear points are found during implementation, confirm before implementing
-
-## Development
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for commands, coding standards, and guidelines.
