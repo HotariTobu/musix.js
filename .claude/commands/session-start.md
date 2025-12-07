@@ -22,20 +22,28 @@ Start a coding session with progress review and planning.
    - Read `docs/specs/<spec-name>/spec.md`
    - Read `docs/specs/<spec-name>/progress.json` (if exists)
 
-4. **Review recent history**
+4. **Verify environment**
+   ```bash
+   bun install          # Sync dependencies
+   bun test --run       # Verify existing tests pass
+   ```
+   - If tests fail, prioritize fixing them before new work
+   - Document any environment issues as blockers
+
+5. **Review recent history**
    ```bash
    git log --oneline -5
    ```
 
-5. **Analyze progress**
+6. **Analyze progress**
    - Identify incomplete requirements (where `passes: false`)
    - Check for blockers
    - Read notes from previous session
 
-6. **Create session plan**
+7. **Create session plan**
    - Recommend next task based on incomplete requirements
    - Provide focused plan for this session
-   - Estimate scope (keep sessions focused on 1-2 requirements)
+   - Keep scope to ONE requirement (split if too large)
 
 ## Output Format
 
@@ -64,6 +72,8 @@ Start a coding session with progress review and planning.
 
 ## Guidelines
 
-- Focus on ONE requirement per session when possible
+- Focus on ONE requirement per session (not "when possible" - always)
+- If a requirement is too large, split into sub-tasks before starting
 - If no progress.json exists, this is a new spec - start from first requirement
 - If all requirements pass, suggest running final verification
+- If environment verification fails, fix before starting new work

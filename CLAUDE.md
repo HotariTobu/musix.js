@@ -89,6 +89,35 @@ Run `/session-end` to:
 | `/session-end` | End session with progress update and commit |
 | `/status` | Show progress summary of all specs |
 
+## Agent Guardrails
+
+Rules to prevent common failure patterns in long-running agent sessions.
+
+### Preventing Context Exhaustion
+
+- Focus on **ONE requirement per session**
+- If a requirement is too large, split into sub-tasks and restart session planning
+- Always read existing code with Read tool before writing new code
+- Do not attempt to implement multiple features at once
+
+### Preventing Premature Completion
+
+A requirement can only be marked as `passes: true` when ALL of the following are met:
+
+1. Related tests exist and pass (`bun test`)
+2. Code quality checks pass (`bun run check:code`)
+3. Manual verification completed (when applicable)
+
+**"Probably works" = `passes: false`**
+
+Never mark a requirement as passed based on assumption. If you cannot verify, leave it as false and document what verification is needed.
+
+### Session Boundaries
+
+- Start each session by reading progress.json and recent git history
+- End each session with a quality gate and structured commit
+- Leave the codebase ready for the next session to start immediately
+
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for commands, coding standards, and guidelines.
