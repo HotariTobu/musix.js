@@ -61,17 +61,49 @@ const result = exampleFunction(param);
 |------------|-----------|---------|
 | TypeError | When invalid argument is passed | "Invalid argument: ..." |
 
-## Test Requirements
+## Acceptance Criteria
 
-### Happy Path
+<!--
+Define acceptance criteria using Given-When-Then (GWT) format.
+Each criterion must have a unique ID (AC-XXX) linked to a requirement (FR-XXX).
+-->
 
-- [ ] TR-001: Test case 1
-- [ ] TR-002: Test case 2
+### AC-001: [Linked to FR-001]
 
-### Error Cases
+- **Given**: [Initial context/state]
+- **When**: [Action performed]
+- **Then**:
+  - [Expected outcome 1]
+  - [Expected outcome 2]
 
-- [ ] TR-003: Error case 1
-- [ ] TR-004: Error case 2
+### AC-002: [Linked to FR-001, Error Case]
+
+- **Given**: [Initial context/state]
+- **When**: [Action that causes error]
+- **Then**:
+  - [Expected error type] is thrown
+  - Error message contains "[expected message]"
+
+<!--
+Example:
+
+### AC-001: Search returns results [FR-001]
+
+- **Given**: Valid API key is configured
+- **When**: User searches for "bohemian rhapsody"
+- **Then**:
+  - Results array is returned
+  - Each result contains id, title, artist
+  - Results are sorted by relevance
+
+### AC-002: Invalid API key error [FR-001, Error]
+
+- **Given**: Invalid API key is configured
+- **When**: User performs any search
+- **Then**:
+  - AuthenticationError is thrown
+  - Error message contains "Invalid API key"
+-->
 
 ## Implementation Notes
 

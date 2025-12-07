@@ -32,10 +32,27 @@
 
 None / List breaking changes
 
-## Test Requirements
+## Acceptance Criteria
 
-- [ ] TR-001: Existing tests pass
-- [ ] TR-002: New tests (if needed)
+<!--
+Define acceptance criteria using Given-When-Then (GWT) format.
+-->
+
+### AC-001: Behavior unchanged
+
+- **Given**: [Existing usage pattern]
+- **When**: [Action performed using refactored code]
+- **Then**:
+  - Output is identical to before refactoring
+  - All existing tests pass
+
+### AC-002: Code quality improved
+
+- **Given**: Refactoring is complete
+- **When**: Code is reviewed
+- **Then**:
+  - [Specific improvement 1, e.g., "Cyclomatic complexity reduced"]
+  - [Specific improvement 2, e.g., "Code duplication eliminated"]
 
 ## Implementation Notes
 
