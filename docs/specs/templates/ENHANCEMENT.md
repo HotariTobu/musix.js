@@ -34,10 +34,28 @@ function existingFunction(param1: Type): ReturnType;
 function existingFunction(param1: Type, param2?: NewType): ReturnType;
 ```
 
-## Test Requirements
+## Acceptance Criteria
 
-- [ ] TR-001: Test case 1
-- [ ] TR-002: Test case 2
+<!--
+Define acceptance criteria using Given-When-Then (GWT) format.
+Each criterion must have a unique ID (AC-XXX) linked to a change (CH-XXX).
+-->
+
+### AC-001: [Linked to CH-001]
+
+- **Given**: [Initial context/state]
+- **When**: [Action performed]
+- **Then**:
+  - [Expected outcome 1]
+  - [Expected outcome 2]
+
+### AC-002: [Linked to CH-001, Backward Compatibility]
+
+- **Given**: [Existing usage pattern]
+- **When**: [User uses existing API without new parameters]
+- **Then**:
+  - Behavior remains unchanged
+  - No breaking changes occur
 
 ## Implementation Notes
 

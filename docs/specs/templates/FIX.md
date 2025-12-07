@@ -23,10 +23,27 @@
 
 <!-- How will the bug be fixed? -->
 
-## Test Requirements
+## Acceptance Criteria
 
-- [ ] TR-001: Test to verify the fix
-- [ ] TR-002: Regression test
+<!--
+Define acceptance criteria using Given-When-Then (GWT) format.
+-->
+
+### AC-001: Bug is fixed
+
+- **Given**: [Condition that previously caused the bug]
+- **When**: [Action that triggered the bug]
+- **Then**:
+  - [Expected correct behavior]
+  - Bug no longer occurs
+
+### AC-002: Regression test
+
+- **Given**: [Normal usage condition]
+- **When**: [Related actions are performed]
+- **Then**:
+  - Existing functionality remains intact
+  - No new bugs are introduced
 
 ## Implementation Notes
 
