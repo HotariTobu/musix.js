@@ -36,12 +36,11 @@ End the current coding session with progress update and structured commit.
    }
    ```
 
-4. **Run quality gate (before commit)**
+4. **Run preflight check (quality gate)**
    ```bash
-   bun run check:code  # Lint and format check
-   bun test            # All tests must pass
+   ./preflight.sh
    ```
-   - If quality gate fails, fix issues before proceeding
+   - If preflight fails, fix issues before proceeding
    - Do NOT skip this step - broken commits waste future sessions
 
 5. **Create structured commit**

@@ -22,12 +22,11 @@ Start a coding session with progress review and planning.
    - Read `docs/specs/<spec-name>/spec.md`
    - Read `docs/specs/<spec-name>/progress.json` (if exists)
 
-4. **Verify environment**
+4. **Run preflight check**
    ```bash
-   bun install          # Sync dependencies
-   bun test --run       # Verify existing tests pass
+   ./preflight.sh
    ```
-   - If tests fail, prioritize fixing them before new work
+   - If preflight fails, prioritize fixing issues before new work
    - Document any environment issues as blockers
 
 5. **Review recent history**
