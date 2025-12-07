@@ -18,6 +18,7 @@ musix.js/
 ├── README.md           # Project overview
 ├── preflight.sh        # Quality gate script (CI, session-start, session-end)
 ├── docs/
+│   ├── adr/            # Architecture Decision Records
 │   ├── specs/          # Specifications (each spec has its own directory)
 │   │   ├── templates/  # Specification templates
 │   │   └── <spec-name>/  # Example: 20251207-feat-spotify-adapter/
@@ -32,8 +33,25 @@ musix.js/
 │       └── youtube-music/
 ├── tests/              # Test code
 └── .claude/
-    └── commands/       # Custom slash commands
+    ├── agents/         # Custom agents
+    ├── commands/       # Custom slash commands
+    └── skills/         # Custom skills
 ```
+
+## Architecture Decision Records (ADR)
+
+Record significant technical decisions in `docs/adr/`.
+
+### When to Write an ADR
+
+- Adding or replacing a library/framework
+- Choosing between multiple implementation approaches
+- Adopting a new pattern or convention
+- Making trade-offs that affect maintainability or performance
+
+### Process
+
+Use the `tech-stack-adr` skill to guide technology selection and ADR creation.
 
 ## Spec-Driven Development
 
