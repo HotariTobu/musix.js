@@ -71,16 +71,30 @@ Ensure the specification is complete and correct:
 /spec-review <spec-filename>
 ```
 
-### 4. Tech Selection (if needed)
+### 4. Design Review
+
+Before implementation, review the design using agents:
+
+**For new interfaces or adapters:**
+```
+Review the interface design in docs/specs/<spec-name>/spec.md using api-design-reviewer
+```
+
+**For complex implementations:**
+```
+Review the proposed design for <feature> using design-reviewer
+```
+
+### 5. Tech Selection (if needed)
 
 Write an ADR (`docs/adr/`) when:
 - Adding or replacing a library/framework
 - Choosing between multiple implementation approaches
 - Adopting a new pattern or convention
 
-Use the `tech-stack-adr` skill to guide technology selection and create an ADR:
+Use the `tech-stack-adr` skill to guide technology selection and create an ADR.
 
-### 5. Implement (Session Workflow)
+### 6. Implement (Session Workflow)
 
 Each session focuses on **one requirement**. Repeat until all requirements are complete.
 
@@ -100,21 +114,29 @@ Generate llms.txt from https://example.com/docs
 **Every session**:
 
 1. Implement one requirement
-2. Write and run tests
+2. Generate and run tests using the `test-generator` agent:
+   ```
+   Generate tests for <requirement> based on docs/specs/<spec-name>/spec.md using test-generator
+   ```
    ```bash
    bun test <file>
    ```
 
-### 6. Code Review
+### 7. Code Review
 
-Review your changes:
+Review your changes using agents:
 
+**Code quality review:**
 ```
-/code-review
-/code-review-security
+Review the code in src/<path> using code-reviewer
 ```
 
-### 7. Check Code
+**Security review (required for auth, API keys, user input):**
+```
+Review src/<path> for security issues using security-reviewer
+```
+
+### 8. Check Code
 
 Run linting and formatting checks:
 
@@ -122,7 +144,7 @@ Run linting and formatting checks:
 bun run check:code
 ```
 
-### 8. Create a Pull Request
+### 9. Create a Pull Request
 
 - Link to the related specification
 - Ensure all tests pass
