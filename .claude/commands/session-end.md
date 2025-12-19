@@ -1,6 +1,6 @@
 ---
 description: End session with progress update and structured commit
-allowed-tools: Bash(git *), Bash(./preflight.sh | tail -2), Read, Edit, Write, Glob, TodoWrite
+allowed-tools: Bash(git *), Bash(make preflight), Read, Edit, Write, Glob, TodoWrite, Task
 ---
 
 # End Session
@@ -20,6 +20,8 @@ End the current coding session with progress update and structured commit.
    git status
    git diff --staged
    ```
+   Select relevant `reviewer-*` agents based on their descriptions and run in parallel.
+   Fix critical issues before proceeding.
 
 3. **Update progress.json**
    - If `progress.json` doesn't exist, stop and prompt user to run `/spec-new` first
@@ -31,7 +33,7 @@ End the current coding session with progress update and structured commit.
 
 4. **Run preflight check (quality gate)**
    ```bash
-   ./preflight.sh | tail -2
+   make preflight
    ```
    - If preflight fails, fix issues before proceeding
    - Do NOT skip this step - broken commits waste future sessions
@@ -39,6 +41,7 @@ End the current coding session with progress update and structured commit.
 5. **Create structured commit**
    - Stage all relevant changes
    - Create commit with Conventional Commits subject (max 72 chars)
+   - Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
    - Include structured body:
 
    ```
@@ -91,3 +94,13 @@ End the current coding session with progress update and structured commit.
 - If tests are failing, do NOT mark requirements as passed
 - Always include "Next session should start with..." in notes
 - Leave the codebase in a state where the next session can start immediately
+
+## Preventing Premature Completion
+
+A requirement can only be marked as `passes: true` when:
+
+1. `make preflight` passes
+2. Manual verification completed (when applicable)
+3. You have actually verified the behavior, not assumed it works
+
+**"Probably works" = `passes: false`**

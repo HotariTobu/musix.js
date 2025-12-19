@@ -1,8 +1,10 @@
-# musix.js
+# CLAUDE.md
 
 > **Rule**: Do not add anything to CLAUDE.md unless it is necessary.
 
-See [README.md](README.md) for project overview.
+## Project Overview
+
+musix.js is a unified music service adapter library for TypeScript. See [README.md](README.md) for details.
 
 ## Language
 
@@ -13,29 +15,11 @@ Exception: Specification content (`docs/specs/*.md`) may be written in other lan
 ## Directory Structure
 
 ```
-musix.js/
-├── CLAUDE.md           # This file (Claude Code configuration)
-├── README.md           # Project overview
-├── preflight.sh        # Quality gate script (CI, session-start, session-end)
-├── docs/
-│   ├── adr/            # Architecture Decision Records
-│   ├── specs/          # Specifications (each spec has its own directory)
-│   │   ├── templates/  # Specification templates
-│   │   └── <spec-name>/  # Example: 20251207-feat-spotify-adapter/
-│   │       ├── spec.md       # Specification document
-│   │       └── progress.json # Progress tracking
-│   └── PRE_DEVELOPMENT_DECISIONS.md  # Pre-development decisions
-├── src/
-│   ├── core/           # Shared types, errors, interfaces
-│   └── adapters/       # Service adapters
-│       ├── spotify/
-│       ├── apple-music/
-│       └── youtube-music/
-├── tests/              # Test code
-└── .claude/
-    ├── agents/         # Custom agents
-    ├── commands/       # Custom slash commands
-    └── skills/         # Custom skills
+docs/
+  adr/              # Architecture Decision Records
+  llms-txt/         # LLM documentation for libraries
+  specs/            # Feature specifications (spec-driven development)
+    templates/      # Spec templates (FEATURE, ENHANCEMENT, FIX, REFACTOR)
 ```
 
 ## Spec-Driven Development
@@ -49,217 +33,8 @@ This repository follows **Spec-Driven Development**.
 
 ## Development Workflow
 
-### 1. Create a Branch
-
-```bash
-git checkout -b feature/<feature-name>
+```
+/spec-new → /design → [ /session-start → /session-end ]* → PR
 ```
 
-### 2. Create a Specification
-
-Before writing any code, create a specification in `docs/specs/`:
-
-```
-/spec-new <feature-name>
-```
-
-### 3. Review the Specification
-
-Ensure the specification is complete and correct:
-
-```
-Review docs/specs/<spec-name>/spec.md using spec-reviewer
-```
-
-### 4. Design Review
-
-Before implementation, review the design using agents:
-
-**For new interfaces or adapters:**
-```
-Review the interface design in docs/specs/<spec-name>/spec.md using api-design-reviewer
-```
-
-**For complex implementations:**
-```
-Review the proposed design for <feature> using design-reviewer
-```
-
-### 5. Tech Selection (if needed)
-
-Write an ADR (`docs/adr/`) when:
-- Adding or replacing a library/framework
-- Choosing between multiple implementation approaches
-- Adopting a new pattern or convention
-
-Use the `tech-stack-adr` skill to guide technology selection and create an ADR.
-
-### 6. Implement (Session Workflow)
-
-Each session focuses on **one requirement**. Repeat until all requirements are complete.
-
-```
-/session-start <spec-name>
-# ... implement and test one requirement ...
-/session-end
-```
-
-**First session** (or when introducing new libraries/tools):
-
-Generate LLM documentation before implementation using the `llms-generator` agent:
-```
-Generate llms.txt from https://example.com/docs
-```
-
-**Every session** (TDD):
-
-1. Generate tests from spec using the `test-generator` agent:
-   ```
-   Generate tests from docs/specs/<spec-name>/spec.md using test-generator
-   ```
-2. Run tests (should fail):
-   ```bash
-   bun test <file>
-   ```
-3. Implement to make tests pass
-4. Run tests again (should pass):
-   ```bash
-   bun test <file>
-   ```
-
-### 7. Code Review
-
-Review your changes using agents:
-
-**Code quality review:**
-```
-Review the code in src/<path> using code-reviewer
-```
-
-**Security review (required for auth, API keys, user input):**
-```
-Review src/<path> for security issues using security-reviewer
-```
-
-### 8. Check Code
-
-Run linting and formatting checks:
-
-```bash
-bun run check:code
-```
-
-### 9. Create a Pull Request
-
-- Link to the related specification
-- Ensure all tests pass
-- Request a review
-
-## Branch Naming
-
-| Type | Pattern | Example |
-|------|---------|---------|
-| Feature | `feature/<name>` | `feature/spotify-adapter` |
-| Bug fix | `fix/<name>` | `fix/auth-error` |
-| Documentation | `docs/<name>` | `docs/api-guide` |
-| Refactoring | `refactor/<name>` | `refactor/error-handling` |
-
-## Commit Messages
-
-Use [Conventional Commits](https://www.conventionalcommits.org/).
-
-### Format
-
-```
-<type>: <description>
-
-[optional body]
-```
-
-### Types
-
-| Type | Description |
-|------|-------------|
-| `feat` | New feature |
-| `fix` | Bug fix |
-| `docs` | Documentation changes |
-| `refactor` | Code refactoring |
-| `test` | Adding or updating tests |
-| `chore` | Maintenance tasks |
-
-### Body Format (for feat/fix)
-
-```
-feat: add rate limit handling to Spotify adapter
-
-## What
-- Implemented exponential backoff for 429 responses
-- Added RetryableError class
-
-## Why
-- Spotify API has strict rate limits (180 req/min)
-
-## Next
-- Add unit tests for retry logic
-- Handle 503 Service Unavailable
-
-## Blockers
-- None
-```
-
-This format ensures session continuity by documenting what was done and what comes next.
-
-## Pull Request Guidelines
-
-1. **Link the specification** - Every PR must reference its specification
-2. **One feature per PR** - Keep PRs focused and small
-3. **All tests must pass** - Ensure CI is green
-4. **Request a review** - Wait for approval before merging
-
-### Preflight Check
-
-Run `./preflight.sh` to verify codebase health. Used by CI, `/session-start`, and `/session-end`.
-
-### Preventing Context Exhaustion
-
-- Focus on **ONE requirement per session**
-- If a requirement is too large, split into sub-tasks and restart session planning
-- Always read existing code with Read tool before writing new code
-- Do not attempt to implement multiple features at once
-
-#### Requirement Size Guidelines
-
-A requirement is **TOO LARGE** if:
-- Implementation touches more than 3 files
-- Expected to take more than 50 tool calls
-- Contains "and" connecting distinct features
-
-**Split strategy:**
-1. Identify sub-tasks
-2. Create temporary sub-requirements (e.g., FR-001a, FR-001b)
-3. Complete each in separate session
-4. Mark parent requirement as passed only when all sub-tasks complete
-
-### Test Integrity
-
-- **NEVER delete or modify existing tests** to make them pass
-- If a test fails, fix the implementation, not the test
-- Exception: Test is genuinely incorrect (document reason in commit)
-- New functionality must have corresponding new tests
-
-### Preventing Premature Completion
-
-A requirement can only be marked as `passes: true` when:
-
-1. `./preflight.sh` passes
-2. Manual verification completed (when applicable)
-3. You have actually verified the behavior, not assumed it works
-
-**"Probably works" = `passes: false`**
-
-### Recovery from Failed Sessions
-
-1. `git stash` or `git reset --soft HEAD~1` to preserve work
-2. Run `/session-start` to re-orient
-3. Document what went wrong in blockers
-4. Split the failed requirement into smaller pieces
+`*` = Repeat until all requirements pass. Each session focuses on **one requirement**.

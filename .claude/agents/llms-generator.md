@@ -14,7 +14,24 @@ You are an LLM Documentation Generator. Your mission is to fetch and structure w
 
 The prompt will contain:
 - Target website URL (required)
-- Output directory (optional, defaults to `docs/llms-txt/{domain}/`)
+- Output directory (optional)
+
+### Output Path Derivation
+
+If no output directory is specified, use the **project/library name** (not the full URL):
+
+```
+URL: https://github.com/line/line-bot-sdk-go
+Output: docs/llms-txt/line-bot-sdk-go/
+
+URL: https://react.dev
+Output: docs/llms-txt/react/
+
+URL: https://docs.python.org/3/library/asyncio.html
+Output: docs/llms-txt/asyncio/
+```
+
+**Rule:** Extract the project or library name from the URL. Keep it simple and human-readable.
 
 ## llms.txt Specification
 
@@ -58,8 +75,9 @@ curl -sI "{url}/llms.txt" | head -1
 
 If exists (HTTP 200):
 - Fetch `/llms.txt` and all linked files
-- Download each linked markdown file
-- Preserve the original structure
+- Use `curl` for `.md` / `.txt` files (raw download)
+- Use `WebFetch` for HTML pages (converts to markdown)
+- Keep the original structure if it's clear; reorganize only if needed
 - Also check for `/llms-ctx.txt` and `/llms-ctx-full.txt`
 
 ### Step 2: Content Discovery
@@ -88,13 +106,13 @@ For each page:
 
 ### Step 4: Structure Output
 
-Create output directory under `docs/`.
+Create output directory using the path derivation rules from the Input section.
 
-**DO NOT mirror URL structure.** Optimize for LLM comprehension:
+Example for `https://github.com/line/line-bot-sdk-go`:
 
 ```
-docs/{output-dir}/
-├── index.md              # Main llms.txt format file
+docs/llms-txt/line-bot-sdk-go/
+├── index.md              # Main llms.txt format file (REQUIRED)
 ├── getting-started.md    # Quick start, installation
 ├── core-concepts/
 │   └── {concept}.md
@@ -106,10 +124,12 @@ docs/{output-dir}/
     └── {topic}.md
 ```
 
+**Note:** For simple documentation, a single `index.md` containing all content is acceptable.
+
 **Structuring Principles:**
-- Group by concept, not URL path
-- Flatten when possible (max 2-3 levels deep)
-- Consolidate pages under 500 words
+- Prioritize clarity and ease of navigation
+- Group by concept, not source URL path
+- Use your judgment to create a logical structure
 - Put essential docs at top level
 
 ### Step 5: Create index.md
