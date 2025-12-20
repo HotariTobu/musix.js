@@ -13,6 +13,7 @@ import type {
   SimplifiedPlaylist as SpotifySimplifiedPlaylist,
   SimplifiedTrack as SpotifySimplifiedTrack,
   Track as SpotifyTrack,
+  UserProfile as SpotifyUserProfile,
 } from "@spotify/web-api-ts-sdk";
 import {
   AuthenticationError,
@@ -25,6 +26,7 @@ import {
 import type {
   Album,
   Artist,
+  CurrentUser,
   Image,
   PaginatedResult,
   Playlist,
@@ -33,6 +35,8 @@ import type {
   SimplifiedPlaylist,
   SpotifyAdapter,
   SpotifyConfig,
+  SpotifyUserAdapter,
+  SpotifyUserAuthConfig,
   Track,
   User,
 } from "../../core/types";
@@ -834,6 +838,513 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
      * @returns Promise resolving to Playlist object
      * @throws {NotFoundError} If the playlist does not exist
      */
+    async getPlaylist(id: string): Promise<Playlist> {
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const spotifyPlaylist = await sdk.playlists.getPlaylist(id);
+          return transformPlaylist(spotifyPlaylist);
+        },
+        "playlist",
+        id,
+      );
+    },
+  };
+}
+
+/**
+ * Transforms a Spotify SDK UserProfile to musix.js CurrentUser.
+ * @param profile - Spotify SDK UserProfile
+ * @returns musix.js CurrentUser
+ */
+function transformUserProfile(profile: SpotifyUserProfile): CurrentUser {
+  return {
+    id: profile.id,
+    displayName: profile.display_name ?? "",
+    email: profile.email,
+    images: profile.images?.map(transformImage),
+    product: profile.product as "free" | "premium" | undefined,
+    externalUrl: profile.external_urls.spotify,
+  };
+}
+
+/**
+ * Creates a Spotify adapter with user authentication (PKCE flow).
+ * This adapter extends the base adapter with user-specific features like
+ * playback control, library management, and personalized recommendations.
+ *
+ * @param config - User authentication configuration
+ * @returns SpotifyUserAdapter instance
+ *
+ * @example
+ * ```typescript
+ * const adapter = createSpotifyUserAdapter({
+ *   clientId: 'your-client-id',
+ *   redirectUri: 'http://localhost:3000/callback',
+ *   scopes: ['user-read-private', 'user-read-email', 'user-library-read']
+ * });
+ *
+ * // First API call will trigger OAuth redirect if not authenticated
+ * const user = await adapter.getCurrentUser();
+ * ```
+ */
+export function createSpotifyUserAdapter(
+  config: SpotifyUserAuthConfig,
+): SpotifyUserAdapter {
+  // Create SDK instance with PKCE flow
+  // The SDK handles OAuth redirect, callback, token storage, and refresh automatically
+  const sdk = SpotifyApi.withUserAuthorization(
+    config.clientId,
+    config.redirectUri,
+    config.scopes,
+    {
+      // Custom response validator for error handling
+      responseValidator: new SpotifyResponseValidator(),
+    },
+  );
+
+  // Get the base adapter methods by creating a temporary base adapter config
+  // We'll use the SDK instance directly for user-specific methods
+  const baseAdapter = createBaseAdapterMethods(sdk);
+
+  return {
+    // Include all base adapter methods
+    ...baseAdapter,
+
+    /**
+     * Gets the current authenticated user's profile.
+     * @returns Promise resolving to CurrentUser object
+     */
+    async getCurrentUser(): Promise<CurrentUser> {
+      const profile = await sdk.currentUser.profile();
+      return transformUserProfile(profile);
+    },
+
+    // Placeholder implementations for other SpotifyUserAdapter methods
+    // These will be implemented in future sessions
+    async play() {
+      throw new Error("Not implemented");
+    },
+    async pause() {
+      throw new Error("Not implemented");
+    },
+    async skipToNext() {
+      throw new Error("Not implemented");
+    },
+    async skipToPrevious() {
+      throw new Error("Not implemented");
+    },
+    async seek() {
+      throw new Error("Not implemented");
+    },
+    async getPlaybackState() {
+      throw new Error("Not implemented");
+    },
+    async getAvailableDevices() {
+      throw new Error("Not implemented");
+    },
+    async transferPlayback() {
+      throw new Error("Not implemented");
+    },
+    async setVolume() {
+      throw new Error("Not implemented");
+    },
+    async setShuffle() {
+      throw new Error("Not implemented");
+    },
+    async setRepeat() {
+      throw new Error("Not implemented");
+    },
+    async getQueue() {
+      throw new Error("Not implemented");
+    },
+    async addToQueue() {
+      throw new Error("Not implemented");
+    },
+    async getSavedTracks() {
+      throw new Error("Not implemented");
+    },
+    async saveTrack() {
+      throw new Error("Not implemented");
+    },
+    async removeSavedTrack() {
+      throw new Error("Not implemented");
+    },
+    async getSavedAlbums() {
+      throw new Error("Not implemented");
+    },
+    async saveAlbum() {
+      throw new Error("Not implemented");
+    },
+    async removeSavedAlbum() {
+      throw new Error("Not implemented");
+    },
+    async getFollowedArtists() {
+      throw new Error("Not implemented");
+    },
+    async followArtist() {
+      throw new Error("Not implemented");
+    },
+    async unfollowArtist() {
+      throw new Error("Not implemented");
+    },
+    async getUserPlaylists() {
+      throw new Error("Not implemented");
+    },
+    async getRecommendations() {
+      throw new Error("Not implemented");
+    },
+    async getRelatedArtists() {
+      throw new Error("Not implemented");
+    },
+    async getNewReleases() {
+      throw new Error("Not implemented");
+    },
+    async getRecentlyPlayed() {
+      throw new Error("Not implemented");
+    },
+    async getTopTracks() {
+      throw new Error("Not implemented");
+    },
+    async getTopArtists() {
+      throw new Error("Not implemented");
+    },
+    async createPlaylist() {
+      throw new Error("Not implemented");
+    },
+    async updatePlaylistDetails() {
+      throw new Error("Not implemented");
+    },
+    async addTracksToPlaylist() {
+      throw new Error("Not implemented");
+    },
+    async removeTracksFromPlaylist() {
+      throw new Error("Not implemented");
+    },
+    async getPlaylistTracks() {
+      throw new Error("Not implemented");
+    },
+  };
+}
+
+/**
+ * Creates base adapter methods that can be shared between
+ * createSpotifyAdapter and createSpotifyUserAdapter.
+ */
+function createBaseAdapterMethods(
+  sdk: ReturnType<typeof SpotifyApi.withUserAuthorization>,
+): SpotifyAdapter {
+  return {
+    async getTrack(id: string): Promise<Track> {
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const spotifyTrack = await sdk.tracks.get(id);
+          return transformTrack(spotifyTrack);
+        },
+        "track",
+        id,
+      );
+    },
+
+    async getTracks(ids: string[]): Promise<Track[]> {
+      if (ids.length === 0) {
+        return [];
+      }
+      if (ids.length > 50) {
+        throw new ValidationError("Cannot request more than 50 tracks at once");
+      }
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const response = await sdk.tracks.get(ids);
+          return response
+            .filter((track): track is SpotifyTrack => track != null)
+            .map(transformTrack);
+        },
+        "track",
+        ids[0],
+      );
+    },
+
+    async searchTracks(
+      query: string,
+      options?: SearchOptions,
+    ): Promise<SearchResult<Track>> {
+      const limit = (options?.limit ?? 20) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const response = await sdk.search(
+            query,
+            ["track"],
+            undefined,
+            limit,
+            offset,
+          );
+          const tracks = response.tracks;
+
+          return {
+            items: tracks.items.map(transformTrack),
+            total: tracks.total,
+            limit: tracks.limit,
+            offset: tracks.offset,
+          };
+        },
+        "track",
+        query,
+      );
+    },
+
+    async searchAlbums(
+      query: string,
+      options?: SearchOptions,
+    ): Promise<SearchResult<Album>> {
+      const limit = (options?.limit ?? 20) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const response = await sdk.search(
+            query,
+            ["album"],
+            undefined,
+            limit,
+            offset,
+          );
+          const albums = response.albums;
+
+          return {
+            items: albums.items.map(transformSimplifiedAlbum),
+            total: albums.total,
+            limit: albums.limit,
+            offset: albums.offset,
+          };
+        },
+        "album",
+        query,
+      );
+    },
+
+    async searchArtists(
+      query: string,
+      options?: SearchOptions,
+    ): Promise<SearchResult<Artist>> {
+      const limit = (options?.limit ?? 20) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const response = await sdk.search(
+            query,
+            ["artist"],
+            undefined,
+            limit,
+            offset,
+          );
+          const artists = response.artists;
+
+          return {
+            items: artists.items.map(transformArtist),
+            total: artists.total,
+            limit: artists.limit,
+            offset: artists.offset,
+          };
+        },
+        "artist",
+        query,
+      );
+    },
+
+    async searchPlaylists(
+      query: string,
+      options?: SearchOptions,
+    ): Promise<SearchResult<SimplifiedPlaylist>> {
+      const limit = (options?.limit ?? 20) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const response = await sdk.search(
+            query,
+            ["playlist"],
+            undefined,
+            limit,
+            offset,
+          );
+
+          // Note: SDK types return PlaylistBase but API actually returns SimplifiedPlaylist with tracks
+          const playlists = (
+            response.playlists.items as SpotifySimplifiedPlaylist[]
+          ).map(transformSimplifiedPlaylist);
+
+          return {
+            items: playlists,
+            total: response.playlists.total,
+            limit: response.playlists.limit,
+            offset: response.playlists.offset,
+          };
+        },
+        "playlist",
+        query,
+      );
+    },
+
+    async getAlbum(id: string): Promise<Album> {
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const spotifyAlbum = await sdk.albums.get(id);
+          return transformAlbum(spotifyAlbum);
+        },
+        "album",
+        id,
+      );
+    },
+
+    async getAlbums(ids: string[]): Promise<Album[]> {
+      if (ids.length === 0) {
+        return [];
+      }
+      if (ids.length > 20) {
+        throw new ValidationError("Cannot request more than 20 albums at once");
+      }
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const response = await sdk.albums.get(ids);
+          return response.map(transformAlbum);
+        },
+        "album",
+        ids[0],
+      );
+    },
+
+    async getArtist(id: string): Promise<Artist> {
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const spotifyArtist = await sdk.artists.get(id);
+          return transformArtist(spotifyArtist);
+        },
+        "artist",
+        id,
+      );
+    },
+
+    async getArtists(ids: string[]): Promise<Artist[]> {
+      if (ids.length === 0) {
+        return [];
+      }
+      if (ids.length > 50) {
+        throw new ValidationError(
+          "Cannot request more than 50 artists at once",
+        );
+      }
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const response = await sdk.artists.get(ids);
+          return response.map(transformArtist);
+        },
+        "artist",
+        ids[0],
+      );
+    },
+
+    async getArtistAlbums(
+      artistId: string,
+      options?: SearchOptions,
+    ): Promise<PaginatedResult<Album>> {
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const response = await sdk.artists.albums(
+            artistId,
+            undefined,
+            undefined,
+            limit,
+            offset,
+          );
+
+          const albums = response.items.map(transformSimplifiedAlbum);
+          const hasNext = offset + response.items.length < response.total;
+
+          return {
+            items: albums,
+            total: response.total,
+            limit,
+            offset,
+            hasNext,
+          };
+        },
+        "artist",
+        artistId,
+      );
+    },
+
+    async getArtistTopTracks(
+      artistId: string,
+      market: string,
+    ): Promise<Track[]> {
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const response = await sdk.artists.topTracks(
+            artistId,
+            market as Market,
+          );
+          return response.tracks.map(transformTrack);
+        },
+        "artist",
+        artistId,
+      );
+    },
+
+    async getAlbumTracks(
+      albumId: string,
+      options?: SearchOptions,
+    ): Promise<PaginatedResult<Track>> {
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const [albumResponse, tracksResponse] = await Promise.all([
+            sdk.albums.get(albumId),
+            sdk.albums.tracks(albumId, undefined, limit, offset),
+          ]);
+
+          const album = transformAlbum(albumResponse);
+          const tracks = tracksResponse.items.map((track) =>
+            transformSimplifiedTrackWithAlbum(track, album),
+          );
+
+          const hasNext =
+            offset + tracksResponse.items.length < tracksResponse.total;
+
+          return {
+            items: tracks,
+            total: tracksResponse.total,
+            limit,
+            offset,
+            hasNext,
+          };
+        },
+        "album",
+        albumId,
+      );
+    },
+
     async getPlaylist(id: string): Promise<Playlist> {
       return executeWithTokenRefresh(
         sdk,

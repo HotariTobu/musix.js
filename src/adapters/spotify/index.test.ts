@@ -6799,3 +6799,209 @@ describe("Token Auto Refresh [NFR-003]", () => {
     });
   });
 });
+
+describe("createSpotifyUserAdapter", () => {
+  describe("AC-015: Create User Adapter", () => {
+    test("should return SpotifyUserAdapter instance with all required methods", async () => {
+      // Given: Valid client ID and redirect URI
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            email: "test@example.com",
+            images: [],
+            product: "premium",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+
+      // When: createSpotifyUserAdapter is called
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private", "user-read-email"],
+      });
+
+      // Then: SpotifyUserAdapter instance is returned
+      expect(adapter).toBeDefined();
+      expect(typeof adapter.getCurrentUser).toBe("function");
+      // Also has base SpotifyAdapter methods
+      expect(typeof adapter.getTrack).toBe("function");
+      expect(typeof adapter.searchTracks).toBe("function");
+    });
+
+    test("should pass correct config to SDK withUserAuthorization", async () => {
+      // Given: Valid config
+      const withUserAuthMock = mock(
+        () =>
+          ({
+            currentUser: { profile: mock(async () => ({})) },
+            logOut: mock(() => {}),
+          }) as unknown as ReturnType<typeof SpotifyApi.withUserAuthorization>,
+      );
+
+      SpotifyApi.withUserAuthorization = withUserAuthMock;
+
+      const { createSpotifyUserAdapter } = await import("./index");
+
+      // When: createSpotifyUserAdapter is called with config
+      createSpotifyUserAdapter({
+        clientId: "my-client-id",
+        redirectUri: "https://myapp.com/callback",
+        scopes: ["user-read-private", "user-read-email", "user-library-read"],
+      });
+
+      // Then: SDK is called with correct parameters
+      expect(withUserAuthMock).toHaveBeenCalledWith(
+        "my-client-id",
+        "https://myapp.com/callback",
+        ["user-read-private", "user-read-email", "user-library-read"],
+        expect.any(Object),
+      );
+    });
+  });
+
+  describe("AC-016: Get Current User", () => {
+    test("should return CurrentUser with id, displayName, product", async () => {
+      // Given: User is authenticated
+      const mockProfile = {
+        id: "user-123",
+        display_name: "Test User",
+        email: "test@example.com",
+        images: [
+          { url: "https://i.scdn.co/image/abc123", width: 300, height: 300 },
+        ],
+        product: "premium",
+        external_urls: { spotify: "https://open.spotify.com/user/user-123" },
+      };
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => mockProfile),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getCurrentUser is called
+      const user = await adapter.getCurrentUser();
+
+      // Then: Returns CurrentUser with all fields
+      expect(user.id).toBe("user-123");
+      expect(user.displayName).toBe("Test User");
+      expect(user.email).toBe("test@example.com");
+      expect(user.product).toBe("premium");
+      expect(user.externalUrl).toBe("https://open.spotify.com/user/user-123");
+      expect(user.images).toHaveLength(1);
+      expect(user.images?.[0].url).toBe("https://i.scdn.co/image/abc123");
+    });
+
+    test("should handle user without email (scope not granted)", async () => {
+      // Given: User authenticated without email scope
+      const mockProfile = {
+        id: "user-456",
+        display_name: "Another User",
+        // email is undefined when scope not granted
+        images: [],
+        product: "free",
+        external_urls: { spotify: "https://open.spotify.com/user/user-456" },
+      };
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => mockProfile),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getCurrentUser is called
+      const user = await adapter.getCurrentUser();
+
+      // Then: Returns CurrentUser without email
+      expect(user.id).toBe("user-456");
+      expect(user.displayName).toBe("Another User");
+      expect(user.email).toBeUndefined();
+      expect(user.product).toBe("free");
+    });
+
+    test("should handle null display_name gracefully", async () => {
+      // Given: User with null display_name (rare but possible)
+      const mockProfile = {
+        id: "user-789",
+        display_name: null,
+        images: [],
+        product: "premium",
+        external_urls: { spotify: "https://open.spotify.com/user/user-789" },
+      };
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => mockProfile),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getCurrentUser is called
+      const user = await adapter.getCurrentUser();
+
+      // Then: Returns CurrentUser with empty displayName
+      expect(user.id).toBe("user-789");
+      expect(user.displayName).toBe("");
+    });
+  });
+});
