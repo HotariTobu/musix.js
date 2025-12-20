@@ -263,7 +263,7 @@ describe("createSpotifyAdapter", () => {
       // Given: configs with different clientSecret formats
       const configs = [
         { clientId: "client", clientSecret: "short" },
-        { clientId: "client", clientSecret: "a1b2c3d4e5f6g7h8i9j0" },
+        { clientId: "client", clientSecret: "fake-secret-for-testing" },
         { clientId: "client", clientSecret: "secret-with-dashes" },
         { clientId: "client", clientSecret: "SECRET_UPPERCASE" },
       ];
