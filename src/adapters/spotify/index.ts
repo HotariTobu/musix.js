@@ -1132,11 +1132,53 @@ export function createSpotifyUserAdapter(
         hasNext,
       };
     },
-    async saveTrack() {
-      throw new Error("Not implemented");
+    /**
+     * Adds a track to the user's library.
+     * @param id - The Spotify track ID
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {RateLimitError} If rate limit is exceeded
+     */
+    async saveTrack(id: string): Promise<void> {
+      try {
+        await sdk.currentUser.tracks.saveTracks([id]);
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid client credentials");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+        throw error;
+      }
     },
-    async removeSavedTrack() {
-      throw new Error("Not implemented");
+    /**
+     * Removes a track from the user's library.
+     * @param id - The Spotify track ID
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {RateLimitError} If rate limit is exceeded
+     */
+    async removeSavedTrack(id: string): Promise<void> {
+      try {
+        await sdk.currentUser.tracks.removeSavedTracks([id]);
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid client credentials");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+        throw error;
+      }
     },
     async getSavedAlbums() {
       throw new Error("Not implemented");

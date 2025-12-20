@@ -9308,4 +9308,439 @@ describe("createSpotifyUserAdapter", () => {
       expect(savedTracksMock).toHaveBeenCalledWith(20, 0);
     });
   });
+
+  describe("AC-028: Save Track [CH-021]", () => {
+    test("should add track to user's library", async () => {
+      // Given: User is authenticated
+      const saveTracksMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          tracks: {
+            saveTracks: saveTracksMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-modify"],
+      });
+
+      // When: saveTrack(trackId) is called
+      await adapter.saveTrack("track-123");
+
+      // Then: Track is added to user's library
+      expect(saveTracksMock).toHaveBeenCalledWith(["track-123"]);
+    });
+
+    test("should handle authentication error", async () => {
+      // Given: User is not authenticated (401 Unauthorized)
+      const error = new Error("Unauthorized") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 401;
+      error.headers = {};
+
+      const saveTracksMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          tracks: {
+            saveTracks: saveTracksMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-modify"],
+      });
+
+      // When: saveTrack is called without authentication
+      // Then: AuthenticationError is thrown
+      await expect(adapter.saveTrack("track-123")).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should handle rate limit error", async () => {
+      // Given: Rate limit is exceeded (429 Too Many Requests)
+      const error = new Error("Too Many Requests") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 429;
+      error.headers = { "retry-after": "5" };
+
+      const saveTracksMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          tracks: {
+            saveTracks: saveTracksMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-modify"],
+      });
+
+      // When: saveTrack is called and rate limit is exceeded
+      // Then: RateLimitError is thrown with retryAfter value
+      try {
+        await adapter.saveTrack("track-123");
+        throw new Error("Expected RateLimitError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(RateLimitError);
+        expect((err as RateLimitError).retryAfter).toBe(5);
+      }
+    });
+
+    test("should handle invalid track ID gracefully", async () => {
+      // Given: Invalid track ID (400 Bad Request)
+      const error = new Error("Bad Request") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 400;
+      error.headers = {};
+
+      const saveTracksMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          tracks: {
+            saveTracks: saveTracksMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-modify"],
+      });
+
+      // When: saveTrack is called with invalid track ID
+      // Then: Error is thrown
+      await expect(adapter.saveTrack("invalid-id")).rejects.toThrow();
+    });
+  });
+
+  describe("AC-029: Remove Saved Track [CH-021]", () => {
+    test("should remove track from user's library", async () => {
+      // Given: User is authenticated and track is saved
+      const removeSavedTracksMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          tracks: {
+            removeSavedTracks: removeSavedTracksMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-modify"],
+      });
+
+      // When: removeSavedTrack(trackId) is called
+      await adapter.removeSavedTrack("track-123");
+
+      // Then: Track is removed from user's library
+      expect(removeSavedTracksMock).toHaveBeenCalledWith(["track-123"]);
+    });
+
+    test("should handle authentication error", async () => {
+      // Given: User is not authenticated (401 Unauthorized)
+      const error = new Error("Unauthorized") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 401;
+      error.headers = {};
+
+      const removeSavedTracksMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          tracks: {
+            removeSavedTracks: removeSavedTracksMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-modify"],
+      });
+
+      // When: removeSavedTrack is called without authentication
+      // Then: AuthenticationError is thrown
+      await expect(adapter.removeSavedTrack("track-123")).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should handle rate limit error", async () => {
+      // Given: Rate limit is exceeded (429 Too Many Requests)
+      const error = new Error("Too Many Requests") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 429;
+      error.headers = { "retry-after": "10" };
+
+      const removeSavedTracksMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          tracks: {
+            removeSavedTracks: removeSavedTracksMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-modify"],
+      });
+
+      // When: removeSavedTrack is called and rate limit is exceeded
+      // Then: RateLimitError is thrown with retryAfter value
+      try {
+        await adapter.removeSavedTrack("track-123");
+        throw new Error("Expected RateLimitError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(RateLimitError);
+        expect((err as RateLimitError).retryAfter).toBe(10);
+      }
+    });
+
+    test("should handle non-existent track gracefully", async () => {
+      // Given: Track does not exist or is not in library
+      const removeSavedTracksMock = mock(async () => {
+        // Spotify API succeeds even if track is not in library
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          tracks: {
+            removeSavedTracks: removeSavedTracksMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-modify"],
+      });
+
+      // When: removeSavedTrack is called for non-existent or unsaved track
+      // Then: Operation succeeds (idempotent behavior)
+      await adapter.removeSavedTrack("non-existent-track");
+
+      expect(removeSavedTracksMock).toHaveBeenCalledWith([
+        "non-existent-track",
+      ]);
+    });
+
+    test("should handle invalid track ID", async () => {
+      // Given: Invalid track ID (400 Bad Request)
+      const error = new Error("Bad Request") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 400;
+      error.headers = {};
+
+      const removeSavedTracksMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          tracks: {
+            removeSavedTracks: removeSavedTracksMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-modify"],
+      });
+
+      // When: removeSavedTrack is called with invalid track ID
+      // Then: Error is thrown
+      await expect(adapter.removeSavedTrack("invalid-id")).rejects.toThrow();
+    });
+  });
 });
