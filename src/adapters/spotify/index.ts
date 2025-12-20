@@ -1067,8 +1067,15 @@ export function createSpotifyUserAdapter(
         repeatState: state.repeat_state as "off" | "track" | "context",
       };
     },
-    async getAvailableDevices() {
-      throw new Error("Not implemented");
+    async getAvailableDevices(): Promise<Device[]> {
+      const response = await sdk.player.getAvailableDevices();
+      return response.devices.map((device) => ({
+        id: device.id ?? "",
+        name: device.name ?? "Unknown Device",
+        type: device.type ?? "Unknown",
+        isActive: device.is_active,
+        volumePercent: device.volume_percent ?? 0,
+      }));
     },
     async transferPlayback() {
       throw new Error("Not implemented");

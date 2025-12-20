@@ -8366,4 +8366,203 @@ describe("createSpotifyUserAdapter", () => {
       expect(result?.repeatState).toBe("track");
     });
   });
+
+  describe("AC-025: Get Available Devices [CH-018]", () => {
+    test("should return array of Device objects with correct properties", async () => {
+      // Given: User is authenticated and has multiple devices
+      const mockDevices = {
+        devices: [
+          {
+            id: "device-123",
+            name: "My Laptop",
+            type: "Computer",
+            is_active: true,
+            volume_percent: 75,
+          },
+          {
+            id: "device-456",
+            name: "iPhone",
+            type: "Smartphone",
+            is_active: false,
+            volume_percent: 50,
+          },
+          {
+            id: "device-789",
+            name: "Living Room Speaker",
+            type: "Speaker",
+            is_active: false,
+            volume_percent: 100,
+          },
+        ],
+      };
+
+      const getAvailableDevicesMock = mock(async () => mockDevices);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getAvailableDevices: getAvailableDevicesMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-playback-state"],
+      });
+
+      // When: getAvailableDevices() is called
+      const result = await adapter.getAvailableDevices();
+
+      // Then: Returns array of Device objects with correct properties
+      expect(result).toBeArray();
+      expect(result).toHaveLength(3);
+
+      // Verify first device (active)
+      expect(result[0].id).toBe("device-123");
+      expect(result[0].name).toBe("My Laptop");
+      expect(result[0].type).toBe("Computer");
+      expect(result[0].isActive).toBe(true);
+      expect(result[0].volumePercent).toBe(75);
+
+      // Verify second device (inactive)
+      expect(result[1].id).toBe("device-456");
+      expect(result[1].name).toBe("iPhone");
+      expect(result[1].type).toBe("Smartphone");
+      expect(result[1].isActive).toBe(false);
+      expect(result[1].volumePercent).toBe(50);
+
+      // Verify third device (speaker)
+      expect(result[2].id).toBe("device-789");
+      expect(result[2].name).toBe("Living Room Speaker");
+      expect(result[2].type).toBe("Speaker");
+      expect(result[2].isActive).toBe(false);
+      expect(result[2].volumePercent).toBe(100);
+
+      expect(getAvailableDevicesMock).toHaveBeenCalled();
+    });
+
+    test("should return empty array when no devices are available", async () => {
+      // Given: User is authenticated but has no devices
+      const mockDevices = {
+        devices: [],
+      };
+
+      const getAvailableDevicesMock = mock(async () => mockDevices);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getAvailableDevices: getAvailableDevicesMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-playback-state"],
+      });
+
+      // When: getAvailableDevices() is called
+      const result = await adapter.getAvailableDevices();
+
+      // Then: Returns empty array
+      expect(result).toBeArray();
+      expect(result).toHaveLength(0);
+      expect(getAvailableDevicesMock).toHaveBeenCalled();
+    });
+
+    test("should correctly map device properties from Spotify API response", async () => {
+      // Given: User is authenticated with a device that has specific property values
+      const mockDevices = {
+        devices: [
+          {
+            id: "unique-device-id-abc123",
+            name: "Custom Device Name",
+            type: "CastAudio", // Different device type
+            is_active: true,
+            volume_percent: 33,
+          },
+        ],
+      };
+
+      const getAvailableDevicesMock = mock(async () => mockDevices);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getAvailableDevices: getAvailableDevicesMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-playback-state"],
+      });
+
+      // When: getAvailableDevices() is called
+      const result = await adapter.getAvailableDevices();
+
+      // Then: Device properties are correctly mapped
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("unique-device-id-abc123");
+      expect(result[0].name).toBe("Custom Device Name");
+      expect(result[0].type).toBe("CastAudio");
+      expect(result[0].isActive).toBe(true);
+      expect(result[0].volumePercent).toBe(33);
+      expect(getAvailableDevicesMock).toHaveBeenCalled();
+    });
+  });
 });
