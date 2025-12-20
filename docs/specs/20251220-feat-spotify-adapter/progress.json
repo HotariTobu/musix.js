@@ -8,10 +8,10 @@
     { "id": "FR-004", "passes": true },
     { "id": "FR-005", "passes": true },
     { "id": "FR-006", "passes": true },
-    { "id": "NFR-001", "passes": false },
-    { "id": "NFR-002", "passes": false },
+    { "id": "NFR-001", "passes": true },
+    { "id": "NFR-002", "passes": true },
     { "id": "NFR-003", "passes": false }
   ],
   "blockers": [],
-  "notes": "FR-006 complete. getPlaylist implemented with transformPlaylist handling owner, tracks, images. 17 new tests covering AC-008. Next: NFR-001/002/003 (error handling and token refresh)."
+  "notes": "NFR-002 complete. Error handling implemented with transformError function. 30 new tests covering AC-002, AC-009, AC-010. AuthenticationError(401), RateLimitError(429), NetworkError, SpotifyApiError all handled. NFR-001 marked complete as type transformation was already implemented in FR-002-006. Next: NFR-003 (token auto-refresh)."
 }
