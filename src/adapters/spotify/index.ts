@@ -35,6 +35,8 @@ import type {
   PlayOptions,
   PlaybackState,
   Playlist,
+  RecommendationOptions,
+  RecommendationSeeds,
   SearchOptions,
   SearchResult,
   SimplifiedPlaylist,
@@ -1428,8 +1430,100 @@ export function createSpotifyUserAdapter(
         throw error;
       }
     },
-    async getRecommendations() {
-      throw new Error("Not implemented");
+    /**
+     * Gets track recommendations based on seeds.
+     * @param seeds - Recommendation seeds (trackIds, artistIds, genres)
+     * @param options - Optional recommendation options (limit, target audio features)
+     * @returns Array of recommended Track objects
+     * @throws {ValidationError} If total seeds > 5
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {RateLimitError} If rate limit is exceeded
+     */
+    async getRecommendations(
+      seeds: RecommendationSeeds,
+      options?: RecommendationOptions,
+    ): Promise<Track[]> {
+      // Calculate total seeds
+      const totalSeeds =
+        (seeds.trackIds?.length ?? 0) +
+        (seeds.artistIds?.length ?? 0) +
+        (seeds.genres?.length ?? 0);
+
+      // AC-040: Validate seed count (max 5 total)
+      if (totalSeeds > 5) {
+        throw new ValidationError(
+          "Total number of seeds cannot exceed 5 (sum of trackIds, artistIds, and genres)",
+        );
+      }
+
+      try {
+        // Build recommendation request
+        const request: {
+          seed_tracks?: string[];
+          seed_artists?: string[];
+          seed_genres?: string[];
+          limit?: number;
+          target_energy?: number;
+          target_danceability?: number;
+          target_valence?: number;
+          target_tempo?: number;
+        } = {};
+
+        // Add seeds
+        if (seeds.trackIds) {
+          request.seed_tracks = seeds.trackIds;
+        }
+        if (seeds.artistIds) {
+          request.seed_artists = seeds.artistIds;
+        }
+        if (seeds.genres) {
+          request.seed_genres = seeds.genres;
+        }
+
+        // Add options
+        if (options?.limit !== undefined) {
+          request.limit = options.limit;
+        }
+        if (options?.targetEnergy !== undefined) {
+          request.target_energy = options.targetEnergy;
+        }
+        if (options?.targetDanceability !== undefined) {
+          request.target_danceability = options.targetDanceability;
+        }
+        if (options?.targetValence !== undefined) {
+          request.target_valence = options.targetValence;
+        }
+        if (options?.targetTempo !== undefined) {
+          request.target_tempo = options.targetTempo;
+        }
+
+        // Call Spotify SDK recommendations endpoint
+        const response = await sdk.recommendations.get(request);
+
+        // Transform Spotify tracks to musix.js Track type
+        return response.tracks.map(transformTrack);
+      } catch (error) {
+        // Handle authentication and rate limit errors
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid or expired access token");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+
+        // Handle network errors (errors without status property)
+        if (error instanceof Error) {
+          throw new NetworkError(error.message, error);
+        }
+
+        // Handle non-Error objects
+        throw new NetworkError(String(error));
+      }
     },
     async getRelatedArtists() {
       throw new Error("Not implemented");

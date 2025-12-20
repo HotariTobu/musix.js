@@ -28,7 +28,7 @@
     { "id": "CH-024", "passes": true },
     { "id": "CH-025", "passes": true },
     { "id": "CH-026", "passes": true },
-    { "id": "CH-027", "passes": false },
+    { "id": "CH-027", "passes": true },
     { "id": "CH-028", "passes": false },
     { "id": "CH-029", "passes": false },
     { "id": "CH-030", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "Session completed CH-026 (followArtist/unfollowArtist). 26/42 requirements passing. Next session should start with CH-027 (getRecommendations) - implement via sdk.recommendations.get(seeds). After CH-027, continue with remaining Discovery features (CH-028: getRelatedArtists, CH-029: getNewReleases)."
+  "notes": "Session completed CH-027 (getRecommendations). 27/42 requirements passing. Next session should start with CH-028 (getRelatedArtists) - implement via sdk.artists.relatedArtists(). After CH-028, continue with CH-029 (getNewReleases) and remaining Discovery features."
 }
