@@ -1,6 +1,6 @@
 {
   "phase": "in_progress",
-  "lastUpdated": "2025-12-20",
+  "lastUpdated": "2025-12-21",
   "requirements": [
     { "id": "CH-001", "passes": true },
     { "id": "CH-002", "passes": true },
@@ -15,7 +15,7 @@
     { "id": "CH-011", "passes": true },
     { "id": "CH-012", "passes": true },
     { "id": "CH-013", "passes": true },
-    { "id": "CH-014", "passes": false },
+    { "id": "CH-014", "passes": true },
     { "id": "CH-015", "passes": false },
     { "id": "CH-016", "passes": false },
     { "id": "CH-017", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "CH-013 (pause) complete. Implemented with AC-020 tests (3 total). Same pattern as play() - passes empty string for deviceId, handles 403 as PremiumRequiredError and 404 as NoActiveDeviceError. Next session should continue with CH-014 (skipToNext)."
+  "notes": "CH-014 (skipToNext) complete. Implemented with AC-021 tests (3 total). Same pattern as pause() - passes empty string for deviceId, handles 403 as PremiumRequiredError and 404 as NoActiveDeviceError. Next session should continue with CH-015 (skipToPrevious)."
 }
