@@ -2,6 +2,7 @@ import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 import type {
   MaxInt,
   Album as SpotifyAlbum,
+  Artist as SpotifyArtist,
   Image as SpotifyImage,
   SimplifiedAlbum as SpotifySimplifiedAlbum,
   SimplifiedArtist as SpotifySimplifiedArtist,
@@ -77,6 +78,25 @@ function transformAlbum(album: SpotifyAlbum): Album {
     totalTracks: album.total_tracks,
     images: album.images.map(transformImage),
     externalUrl: album.external_urls.spotify,
+  };
+}
+
+/**
+ * Transforms a Spotify SDK full Artist to musix.js Artist.
+ * @param artist - Spotify SDK Artist
+ * @returns musix.js Artist
+ */
+function transformArtist(artist: SpotifyArtist): Artist {
+  return {
+    id: artist.id,
+    name: artist.name,
+    genres:
+      artist.genres && artist.genres.length > 0 ? artist.genres : undefined,
+    images:
+      artist.images && artist.images.length > 0
+        ? artist.images.map(transformImage)
+        : undefined,
+    externalUrl: artist.external_urls.spotify,
   };
 }
 
@@ -207,9 +227,22 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
      * Retrieves an artist by their Spotify ID.
      * @param id - The Spotify artist ID
      * @returns Promise resolving to Artist object
+     * @throws {NotFoundError} If the artist does not exist
      */
     async getArtist(id: string): Promise<Artist> {
-      throw new Error("Not implemented");
+      try {
+        const spotifyArtist = await sdk.artists.get(id);
+        return transformArtist(spotifyArtist);
+      } catch (error) {
+        // Check if it's a 404 error (artist not found)
+        if (error && typeof error === "object" && "status" in error) {
+          if (error.status === 404) {
+            throw new NotFoundError("artist", id);
+          }
+        }
+        // Re-throw any other errors
+        throw error;
+      }
     },
 
     /**

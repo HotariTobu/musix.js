@@ -6,12 +6,12 @@
     { "id": "FR-002", "passes": true },
     { "id": "FR-003", "passes": true },
     { "id": "FR-004", "passes": true },
-    { "id": "FR-005", "passes": false },
+    { "id": "FR-005", "passes": true },
     { "id": "FR-006", "passes": false },
     { "id": "NFR-001", "passes": false },
     { "id": "NFR-002", "passes": false },
     { "id": "NFR-003", "passes": false }
   ],
   "blockers": [],
-  "notes": "FR-004 complete. getAlbum implemented with transformAlbum for full SDK Album type and NotFoundError handling. 19 new tests covering AC-006. Next: FR-005 (getArtist)."
+  "notes": "FR-005 complete. getArtist implemented with transformArtist handling optional genres/images. 20 new tests covering AC-007. Next: FR-006 (getPlaylist)."
 }
