@@ -1,5 +1,6 @@
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 import type {
+  MaxInt,
   Image as SpotifyImage,
   SimplifiedAlbum as SpotifySimplifiedAlbum,
   SimplifiedArtist as SpotifySimplifiedArtist,
@@ -137,7 +138,29 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
       query: string,
       options?: SearchOptions,
     ): Promise<SearchResult<Track>> {
-      throw new Error("Not implemented");
+      // Apply default values and constraints
+      // Limit is capped at 50 (Spotify API max), cast to SDK's expected literal union type
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      // Call Spotify SDK search API
+      const searchResults = await sdk.search(
+        query,
+        ["track"],
+        undefined,
+        limit,
+        offset,
+      );
+
+      // Transform Spotify tracks to musix.js Track type
+      const tracks = searchResults.tracks.items.map(transformTrack);
+
+      return {
+        items: tracks,
+        total: searchResults.tracks.total,
+        limit,
+        offset,
+      };
     },
 
     /**

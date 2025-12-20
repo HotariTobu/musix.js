@@ -745,3 +745,773 @@ describe("getTrack", () => {
     });
   });
 });
+
+// AC-005, AC-005a, AC-005b: Track Search [FR-003]
+describe("searchTracks", () => {
+  // Helper to create adapter with mocked SDK for search
+  const createMockedAdapterForSearch = (
+    mockSearchResponse: unknown,
+    shouldThrow = false,
+    errorStatus = 500,
+  ) => {
+    const mockSearch = mock(
+      async (
+        query: string,
+        types: string[],
+        options?: { limit?: number; offset?: number },
+      ) => {
+        if (shouldThrow) {
+          const error = new Error("Search failed") as Error & {
+            status: number;
+          };
+          error.status = errorStatus;
+          throw error;
+        }
+        return mockSearchResponse;
+      },
+    );
+
+    SpotifyApi.withClientCredentials = mock(
+      () =>
+        ({
+          search: mockSearch,
+        }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+    );
+
+    const config: SpotifyConfig = {
+      clientId: "test-client-id",
+      clientSecret: "test-client-secret",
+    };
+    return createSpotifyAdapter(config);
+  };
+
+  // Mock Spotify search response
+  const createMockSpotifySearchResponse = (
+    total: number,
+    limit: number,
+    offset: number,
+    items: unknown[] = [],
+  ) => ({
+    tracks: {
+      items,
+      total,
+      limit,
+      offset,
+      href: `https://api.spotify.com/v1/search?query=test&type=track&offset=${offset}&limit=${limit}`,
+      next: offset + limit < total ? "next-page-url" : null,
+      previous: offset > 0 ? "previous-page-url" : null,
+    },
+  });
+
+  describe("Successful Search - Basic", () => {
+    // AC-005: Given valid auth config, When searchTracks called, Then returns SearchResult<Track>
+    test("should return SearchResult<Track> object with items, total, limit, offset", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockTrack = createMockSpotifyTrack();
+      const mockResponse = createMockSpotifySearchResponse(100, 20, 0, [
+        mockTrack,
+      ]);
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with query
+      const query = "bohemian rhapsody";
+      const result = await adapter.searchTracks(query);
+
+      // Then: SearchResult<Track> object is returned with all required properties
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+      expect(typeof result.total).toBe("number");
+      expect(typeof result.limit).toBe("number");
+      expect(typeof result.offset).toBe("number");
+    });
+
+    // AC-005: items array contains Track objects
+    test("should return SearchResult with items as Track array", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockTrack1 = createMockSpotifyTrack({
+        id: "track1",
+        name: "Track 1",
+      });
+      const mockTrack2 = createMockSpotifyTrack({
+        id: "track2",
+        name: "Track 2",
+      });
+      const mockResponse = createMockSpotifySearchResponse(2, 20, 0, [
+        mockTrack1,
+        mockTrack2,
+      ]);
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called
+      const result = await adapter.searchTracks("test query");
+
+      // Then: items array contains Track objects
+      expect(result.items.length).toBe(2);
+      for (const track of result.items) {
+        expect(typeof track.id).toBe("string");
+        expect(typeof track.name).toBe("string");
+        expect(typeof track.externalUrl).toBe("string");
+        expect(Array.isArray(track.artists)).toBe(true);
+        expect(typeof track.album).toBe("object");
+        expect(typeof track.durationMs).toBe("number");
+      }
+    });
+
+    // AC-005: total is non-negative integer
+    test("should return SearchResult with total as non-negative integer", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockResponse = createMockSpotifySearchResponse(150, 20, 0, [
+        createMockSpotifyTrack(),
+      ]);
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called
+      const result = await adapter.searchTracks("test");
+
+      // Then: total is non-negative integer
+      expect(typeof result.total).toBe("number");
+      expect(result.total).toBeGreaterThanOrEqual(0);
+      expect(Number.isInteger(result.total)).toBe(true);
+      expect(result.total).toBe(150);
+    });
+
+    // AC-005: limit and offset are included
+    test("should return SearchResult with limit and offset", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockResponse = createMockSpotifySearchResponse(100, 20, 0, [
+        createMockSpotifyTrack(),
+      ]);
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called
+      const result = await adapter.searchTracks("test");
+
+      // Then: limit and offset are included
+      expect(typeof result.limit).toBe("number");
+      expect(typeof result.offset).toBe("number");
+    });
+  });
+
+  describe("Empty Search Results", () => {
+    // AC-005a: Given valid auth, When no results, Then items is empty array and total is 0
+    test("should return empty items array when no results found", async () => {
+      // Given: valid authentication config with mocked SDK returning empty results
+      const mockResponse = createMockSpotifySearchResponse(0, 20, 0, []);
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with query that has no results
+      const result = await adapter.searchTracks("xyznonexistentquery123");
+
+      // Then: items is empty array
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+      expect(result.items.length).toBe(0);
+    });
+
+    // AC-005a: total is 0 when no results
+    test("should return total as 0 when no results found", async () => {
+      // Given: valid authentication config with mocked SDK returning empty results
+      const mockResponse = createMockSpotifySearchResponse(0, 20, 0, []);
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with query that has no results
+      const result = await adapter.searchTracks("nonexistent");
+
+      // Then: total is 0
+      expect(result.total).toBe(0);
+    });
+
+    // AC-005a: Complete empty result structure
+    test("should return valid SearchResult structure even with no results", async () => {
+      // Given: valid authentication config with mocked SDK returning empty results
+      const mockResponse = createMockSpotifySearchResponse(0, 20, 0, []);
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called
+      const result = await adapter.searchTracks("empty");
+
+      // Then: all SearchResult properties are present
+      expect(result.items).toEqual([]);
+      expect(result.total).toBe(0);
+      expect(result.limit).toBe(20);
+      expect(result.offset).toBe(0);
+    });
+  });
+
+  describe("Pagination Support", () => {
+    // AC-005b: Given valid auth, When searchTracks with { limit: 5, offset: 10 }, Then limit=5, offset=10
+    test("should respect limit and offset options in SearchResult", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockTracks = Array.from({ length: 5 }, (_, i) =>
+        createMockSpotifyTrack({ id: `track${i}`, name: `Track ${i}` }),
+      );
+      const mockResponse = createMockSpotifySearchResponse(
+        100,
+        5,
+        10,
+        mockTracks,
+      );
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with { limit: 5, offset: 10 }
+      const result = await adapter.searchTracks("test", {
+        limit: 5,
+        offset: 10,
+      });
+
+      // Then: limit is 5 and offset is 10
+      expect(result.limit).toBe(5);
+      expect(result.offset).toBe(10);
+    });
+
+    // AC-005b: items length is at most limit
+    test("should return items array with length at most limit", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockTracks = Array.from({ length: 5 }, (_, i) =>
+        createMockSpotifyTrack({ id: `track${i}`, name: `Track ${i}` }),
+      );
+      const mockResponse = createMockSpotifySearchResponse(
+        100,
+        5,
+        10,
+        mockTracks,
+      );
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with limit: 5
+      const result = await adapter.searchTracks("test", {
+        limit: 5,
+        offset: 10,
+      });
+
+      // Then: items array has at most 5 items
+      expect(result.items.length).toBeLessThanOrEqual(5);
+      expect(result.items.length).toBe(5);
+    });
+
+    // Various limit values
+    test("should handle different limit values", async () => {
+      // Given: valid authentication config
+      const testCases = [
+        { limit: 1, offset: 0, expectedItems: 1 },
+        { limit: 10, offset: 0, expectedItems: 10 },
+        { limit: 25, offset: 0, expectedItems: 25 },
+        { limit: 50, offset: 0, expectedItems: 50 },
+      ];
+
+      for (const testCase of testCases) {
+        const mockTracks = Array.from(
+          { length: testCase.expectedItems },
+          (_, i) => createMockSpotifyTrack({ id: `track${i}` }),
+        );
+        const mockResponse = createMockSpotifySearchResponse(
+          100,
+          testCase.limit,
+          testCase.offset,
+          mockTracks,
+        );
+        const adapter = createMockedAdapterForSearch(mockResponse);
+
+        // When: searchTracks is called with specific limit
+        const result = await adapter.searchTracks("test", {
+          limit: testCase.limit,
+          offset: testCase.offset,
+        });
+
+        // Then: result matches expected values
+        expect(result.limit).toBe(testCase.limit);
+        expect(result.offset).toBe(testCase.offset);
+        expect(result.items.length).toBe(testCase.expectedItems);
+      }
+    });
+
+    // Various offset values
+    test("should handle different offset values", async () => {
+      // Given: valid authentication config
+      const testCases = [
+        { limit: 20, offset: 0 },
+        { limit: 20, offset: 20 },
+        { limit: 20, offset: 40 },
+        { limit: 20, offset: 100 },
+      ];
+
+      for (const testCase of testCases) {
+        const mockTracks = Array.from({ length: testCase.limit }, (_, i) =>
+          createMockSpotifyTrack({ id: `track${i + testCase.offset}` }),
+        );
+        const mockResponse = createMockSpotifySearchResponse(
+          200,
+          testCase.limit,
+          testCase.offset,
+          mockTracks,
+        );
+        const adapter = createMockedAdapterForSearch(mockResponse);
+
+        // When: searchTracks is called with specific offset
+        const result = await adapter.searchTracks("test", {
+          limit: testCase.limit,
+          offset: testCase.offset,
+        });
+
+        // Then: result matches expected offset
+        expect(result.offset).toBe(testCase.offset);
+      }
+    });
+  });
+
+  describe("Default Values", () => {
+    // Default limit should be 20 when not provided
+    test("should use default limit of 20 when options not provided", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockTracks = Array.from({ length: 20 }, (_, i) =>
+        createMockSpotifyTrack({ id: `track${i}` }),
+      );
+      const mockResponse = createMockSpotifySearchResponse(
+        100,
+        20,
+        0,
+        mockTracks,
+      );
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called without options
+      const result = await adapter.searchTracks("test");
+
+      // Then: limit is 20 (default)
+      expect(result.limit).toBe(20);
+    });
+
+    // Default offset should be 0 when not provided
+    test("should use default offset of 0 when options not provided", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockResponse = createMockSpotifySearchResponse(100, 20, 0, [
+        createMockSpotifyTrack(),
+      ]);
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called without options
+      const result = await adapter.searchTracks("test");
+
+      // Then: offset is 0 (default)
+      expect(result.offset).toBe(0);
+    });
+
+    // Partial options - only limit provided
+    test("should use default offset when only limit provided", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockTracks = Array.from({ length: 10 }, (_, i) =>
+        createMockSpotifyTrack({ id: `track${i}` }),
+      );
+      const mockResponse = createMockSpotifySearchResponse(
+        100,
+        10,
+        0,
+        mockTracks,
+      );
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with only limit
+      const result = await adapter.searchTracks("test", { limit: 10 });
+
+      // Then: limit is 10 and offset is 0 (default)
+      expect(result.limit).toBe(10);
+      expect(result.offset).toBe(0);
+    });
+
+    // Partial options - only offset provided
+    test("should use default limit when only offset provided", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockTracks = Array.from({ length: 20 }, (_, i) =>
+        createMockSpotifyTrack({ id: `track${i + 30}` }),
+      );
+      const mockResponse = createMockSpotifySearchResponse(
+        100,
+        20,
+        30,
+        mockTracks,
+      );
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with only offset
+      const result = await adapter.searchTracks("test", { offset: 30 });
+
+      // Then: limit is 20 (default) and offset is 30
+      expect(result.limit).toBe(20);
+      expect(result.offset).toBe(30);
+    });
+  });
+
+  describe("Limit Constraints", () => {
+    // limit > 50 should be capped to 50
+    test("should cap limit to 50 when limit exceeds maximum", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockTracks = Array.from({ length: 50 }, (_, i) =>
+        createMockSpotifyTrack({ id: `track${i}` }),
+      );
+      const mockResponse = createMockSpotifySearchResponse(
+        200,
+        50,
+        0,
+        mockTracks,
+      );
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with limit > 50
+      const result = await adapter.searchTracks("test", { limit: 100 });
+
+      // Then: limit is capped to 50
+      expect(result.limit).toBe(50);
+      expect(result.items.length).toBeLessThanOrEqual(50);
+    });
+
+    // Boundary: limit = 50 (maximum allowed)
+    test("should accept limit of 50 as valid maximum", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockTracks = Array.from({ length: 50 }, (_, i) =>
+        createMockSpotifyTrack({ id: `track${i}` }),
+      );
+      const mockResponse = createMockSpotifySearchResponse(
+        100,
+        50,
+        0,
+        mockTracks,
+      );
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with limit = 50
+      const result = await adapter.searchTracks("test", { limit: 50 });
+
+      // Then: limit is 50
+      expect(result.limit).toBe(50);
+    });
+
+    // Boundary: limit = 51 should be capped
+    test("should cap limit of 51 to 50", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockTracks = Array.from({ length: 50 }, (_, i) =>
+        createMockSpotifyTrack({ id: `track${i}` }),
+      );
+      const mockResponse = createMockSpotifySearchResponse(
+        100,
+        50,
+        0,
+        mockTracks,
+      );
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with limit = 51
+      const result = await adapter.searchTracks("test", { limit: 51 });
+
+      // Then: limit is capped to 50
+      expect(result.limit).toBe(50);
+    });
+
+    // Very large limit value
+    test("should cap extremely large limit values to 50", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockTracks = Array.from({ length: 50 }, (_, i) =>
+        createMockSpotifyTrack({ id: `track${i}` }),
+      );
+      const mockResponse = createMockSpotifySearchResponse(
+        1000,
+        50,
+        0,
+        mockTracks,
+      );
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with very large limit
+      const result = await adapter.searchTracks("test", { limit: 1000 });
+
+      // Then: limit is capped to 50
+      expect(result.limit).toBe(50);
+    });
+  });
+
+  describe("Query Handling", () => {
+    // Different query strings
+    test("should handle various query strings", async () => {
+      // Given: valid authentication config
+      const queries = [
+        "single",
+        "multiple words query",
+        'artist:Queen album:"A Night at the Opera"',
+        "year:2020 genre:rock",
+      ];
+
+      for (const query of queries) {
+        const mockResponse = createMockSpotifySearchResponse(10, 20, 0, [
+          createMockSpotifyTrack(),
+        ]);
+        const adapter = createMockedAdapterForSearch(mockResponse);
+
+        // When: searchTracks is called with various queries
+        const result = await adapter.searchTracks(query);
+
+        // Then: all queries are handled successfully
+        expect(result).toBeDefined();
+        expect(result.items).toBeDefined();
+      }
+    });
+
+    // Empty query string
+    test("should handle empty query string", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockResponse = createMockSpotifySearchResponse(0, 20, 0, []);
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with empty query
+      const result = await adapter.searchTracks("");
+
+      // Then: should return valid SearchResult (may be empty)
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    });
+
+    // Query with special characters
+    test("should handle query with special characters", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockResponse = createMockSpotifySearchResponse(5, 20, 0, [
+        createMockSpotifyTrack(),
+      ]);
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with special characters
+      const result = await adapter.searchTracks("AC/DC's rock & roll!");
+
+      // Then: query is handled successfully
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+    });
+  });
+
+  describe("Track Type Validation", () => {
+    // Ensure each track in results conforms to Track type
+    test("should return tracks conforming to Track interface", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockTracks = Array.from({ length: 3 }, (_, i) =>
+        createMockSpotifyTrack({ id: `track${i}`, name: `Track ${i}` }),
+      );
+      const mockResponse = createMockSpotifySearchResponse(
+        3,
+        20,
+        0,
+        mockTracks,
+      );
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called
+      const result = await adapter.searchTracks("test");
+
+      // Then: each track conforms to Track interface
+      for (const track of result.items) {
+        // Required string properties
+        expect(typeof track.id).toBe("string");
+        expect(typeof track.name).toBe("string");
+        expect(typeof track.externalUrl).toBe("string");
+
+        // Artists array
+        expect(Array.isArray(track.artists)).toBe(true);
+        expect(track.artists.length).toBeGreaterThan(0);
+        for (const artist of track.artists) {
+          expect(typeof artist.id).toBe("string");
+          expect(typeof artist.name).toBe("string");
+          expect(typeof artist.externalUrl).toBe("string");
+        }
+
+        // Album object
+        expect(typeof track.album).toBe("object");
+        expect(track.album).not.toBeNull();
+        expect(typeof track.album.id).toBe("string");
+        expect(typeof track.album.name).toBe("string");
+
+        // Duration
+        expect(typeof track.durationMs).toBe("number");
+        expect(track.durationMs).toBeGreaterThan(0);
+
+        // Preview URL (nullable)
+        expect(
+          track.previewUrl === null || typeof track.previewUrl === "string",
+        ).toBe(true);
+      }
+    });
+
+    // Tracks with various property values
+    test("should handle tracks with null previewUrl in search results", async () => {
+      // Given: valid authentication config with tracks with null previewUrl
+      const mockTracks = [
+        createMockSpotifyTrack({ preview_url: null }),
+        createMockSpotifyTrack({ preview_url: "https://preview.url" }),
+      ];
+      const mockResponse = createMockSpotifySearchResponse(
+        2,
+        20,
+        0,
+        mockTracks,
+      );
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called
+      const result = await adapter.searchTracks("test");
+
+      // Then: both tracks are handled correctly
+      expect(result.items[0].previewUrl).toBeNull();
+      expect(result.items[1].previewUrl).toBe("https://preview.url");
+    });
+  });
+
+  describe("Edge Cases", () => {
+    // Offset beyond total results
+    test("should handle offset beyond total results", async () => {
+      // Given: valid authentication config with offset > total
+      const mockResponse = createMockSpotifySearchResponse(50, 20, 100, []);
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with offset beyond total
+      const result = await adapter.searchTracks("test", { offset: 100 });
+
+      // Then: returns empty items with correct pagination info
+      expect(result.items).toEqual([]);
+      expect(result.offset).toBe(100);
+      expect(result.total).toBe(50);
+    });
+
+    // Last page with partial results
+    test("should handle last page with fewer items than limit", async () => {
+      // Given: valid authentication config with last page having only 3 items
+      const mockTracks = Array.from({ length: 3 }, (_, i) =>
+        createMockSpotifyTrack({ id: `track${i}` }),
+      );
+      const mockResponse = createMockSpotifySearchResponse(
+        23,
+        20,
+        20,
+        mockTracks,
+      );
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called for last page
+      const result = await adapter.searchTracks("test", {
+        limit: 20,
+        offset: 20,
+      });
+
+      // Then: returns only available items
+      expect(result.items.length).toBe(3);
+      expect(result.limit).toBe(20);
+      expect(result.offset).toBe(20);
+      expect(result.total).toBe(23);
+    });
+
+    // Zero limit (edge case)
+    test("should handle zero limit", async () => {
+      // Given: valid authentication config
+      const mockResponse = createMockSpotifySearchResponse(100, 0, 0, []);
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When: searchTracks is called with limit = 0
+      const result = await adapter.searchTracks("test", { limit: 0 });
+
+      // Then: returns empty items
+      expect(result.items).toEqual([]);
+      expect(result.limit).toBe(0);
+    });
+
+    // Negative values (should be handled gracefully)
+    test("should handle negative limit gracefully", async () => {
+      // Given: valid authentication config
+      const mockResponse = createMockSpotifySearchResponse(100, 20, 0, [
+        createMockSpotifyTrack(),
+      ]);
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When/Then: searchTracks is called with negative limit
+      // Implementation should handle this (either reject or use default)
+      await expect(
+        adapter.searchTracks("test", { limit: -5 }),
+      ).resolves.toBeDefined();
+    });
+
+    test("should handle negative offset gracefully", async () => {
+      // Given: valid authentication config
+      const mockResponse = createMockSpotifySearchResponse(100, 20, 0, [
+        createMockSpotifyTrack(),
+      ]);
+      const adapter = createMockedAdapterForSearch(mockResponse);
+
+      // When/Then: searchTracks is called with negative offset
+      // Implementation should handle this (either reject or use default)
+      await expect(
+        adapter.searchTracks("test", { offset: -10 }),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  describe("Multiple Calls", () => {
+    // Multiple sequential calls
+    test("should handle multiple sequential searchTracks calls", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockResponse1 = createMockSpotifySearchResponse(50, 20, 0, [
+        createMockSpotifyTrack({ id: "track1" }),
+      ]);
+      const mockResponse2 = createMockSpotifySearchResponse(30, 10, 0, [
+        createMockSpotifyTrack({ id: "track2" }),
+      ]);
+
+      const adapter1 = createMockedAdapterForSearch(mockResponse1);
+      const adapter2 = createMockedAdapterForSearch(mockResponse2);
+
+      // When: calling searchTracks multiple times
+      const result1 = await adapter1.searchTracks("query1");
+      const result2 = await adapter2.searchTracks("query2", { limit: 10 });
+
+      // Then: both calls succeed independently
+      expect(result1).toBeDefined();
+      expect(result1.total).toBe(50);
+      expect(result2).toBeDefined();
+      expect(result2.total).toBe(30);
+      expect(result2.limit).toBe(10);
+    });
+
+    // Same query, different pagination
+    test("should handle same query with different pagination", async () => {
+      // Given: valid authentication config
+      const page1Response = createMockSpotifySearchResponse(
+        100,
+        20,
+        0,
+        Array.from({ length: 20 }, (_, i) =>
+          createMockSpotifyTrack({ id: `track${i}` }),
+        ),
+      );
+      const page2Response = createMockSpotifySearchResponse(
+        100,
+        20,
+        20,
+        Array.from({ length: 20 }, (_, i) =>
+          createMockSpotifyTrack({ id: `track${i + 20}` }),
+        ),
+      );
+
+      const adapter1 = createMockedAdapterForSearch(page1Response);
+      const adapter2 = createMockedAdapterForSearch(page2Response);
+
+      // When: calling searchTracks with same query but different pagination
+      const page1 = await adapter1.searchTracks("test", {
+        limit: 20,
+        offset: 0,
+      });
+      const page2 = await adapter2.searchTracks("test", {
+        limit: 20,
+        offset: 20,
+      });
+
+      // Then: both pages return different results
+      expect(page1.offset).toBe(0);
+      expect(page2.offset).toBe(20);
+      expect(page1.total).toBe(100);
+      expect(page2.total).toBe(100);
+    });
+  });
+});
