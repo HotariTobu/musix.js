@@ -1,5 +1,6 @@
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 import type {
+  IValidateResponses,
   MaxInt,
   Album as SpotifyAlbum,
   Artist as SpotifyArtist,
@@ -10,7 +11,13 @@ import type {
   SimplifiedArtist as SpotifySimplifiedArtist,
   Track as SpotifyTrack,
 } from "@spotify/web-api-ts-sdk";
-import { NotFoundError } from "../../core/errors";
+import {
+  AuthenticationError,
+  NetworkError,
+  NotFoundError,
+  RateLimitError,
+  SpotifyApiError,
+} from "../../core/errors";
 import type {
   Album,
   Artist,
@@ -23,6 +30,56 @@ import type {
   Track,
   User,
 } from "../../core/types";
+
+/**
+ * Custom error class that includes HTTP status and headers from the Response.
+ * This allows the transformError function to correctly classify errors.
+ */
+class SpotifyHttpError extends Error {
+  status: number;
+  headers: Record<string, string>;
+
+  constructor(
+    message: string,
+    status: number,
+    headers: Record<string, string>,
+  ) {
+    super(message);
+    this.name = "SpotifyHttpError";
+    this.status = status;
+    this.headers = headers;
+  }
+}
+
+/**
+ * Custom response validator that attaches HTTP status and headers to errors.
+ * The default SDK validator throws plain Error objects without status information,
+ * which prevents proper error classification.
+ */
+class SpotifyResponseValidator implements IValidateResponses {
+  async validateResponse(response: Response): Promise<void> {
+    if (response.ok) {
+      return;
+    }
+
+    // Extract headers as a plain object
+    const headers: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      headers[key.toLowerCase()] = value;
+    });
+
+    // Get response body for error message
+    let body = "";
+    try {
+      body = await response.text();
+    } catch {
+      // Ignore body parsing errors
+    }
+
+    const message = body || response.statusText || `HTTP ${response.status}`;
+    throw new SpotifyHttpError(message, response.status, headers);
+  }
+}
 
 /**
  * Transforms a Spotify SDK Image to musix.js Image.
@@ -149,6 +206,63 @@ function transformPlaylist(playlist: SpotifyPlaylist<SpotifyTrack>): Playlist {
 }
 
 /**
+ * Type guard to check if an error has HTTP status information.
+ * Works with SpotifyHttpError from our custom validator or any error with status property.
+ */
+function isHttpError(
+  error: unknown,
+): error is Error & { status: number; headers?: Record<string, string> } {
+  return (
+    error !== null &&
+    typeof error === "object" &&
+    "status" in error &&
+    typeof (error as { status: unknown }).status === "number"
+  );
+}
+
+/**
+ * Transforms a Spotify SDK error to the appropriate musix.js error type.
+ * @param error - The error thrown by the Spotify SDK
+ * @param resourceType - The type of resource being accessed (for NotFoundError)
+ * @param resourceId - The ID of the resource being accessed (for NotFoundError)
+ * @returns The appropriate musix.js error
+ */
+function transformError(
+  error: unknown,
+  resourceType: "track" | "album" | "artist" | "playlist",
+  resourceId: string,
+): Error {
+  // Handle errors with HTTP status codes (from SpotifyHttpError or mocked errors)
+  if (isHttpError(error)) {
+    switch (error.status) {
+      case 401:
+        return new AuthenticationError("Invalid client credentials");
+      case 404:
+        return new NotFoundError(resourceType, resourceId);
+      case 429: {
+        const retryAfter = error.headers?.["retry-after"]
+          ? Number.parseInt(error.headers["retry-after"], 10)
+          : 60; // Default to 60 seconds if header is missing
+        return new RateLimitError(retryAfter);
+      }
+      default:
+        return new SpotifyApiError(
+          error.status,
+          error.message || "Unknown error",
+        );
+    }
+  }
+
+  // Handle network errors (errors without status property)
+  if (error instanceof Error) {
+    return new NetworkError(error.message, error);
+  }
+
+  // Handle non-Error objects
+  return new NetworkError(String(error));
+}
+
+/**
  * Creates a Spotify adapter instance using the official Spotify Web API SDK.
  * Uses Client Credentials Flow for authentication.
  *
@@ -171,6 +285,8 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
   const sdk = SpotifyApi.withClientCredentials(
     config.clientId,
     config.clientSecret,
+    [],
+    { responseValidator: new SpotifyResponseValidator() },
   );
 
   // Return adapter object implementing SpotifyAdapter interface
@@ -186,14 +302,7 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
         const spotifyTrack = await sdk.tracks.get(id);
         return transformTrack(spotifyTrack);
       } catch (error) {
-        // Check if it's a 404 error (track not found)
-        if (error && typeof error === "object" && "status" in error) {
-          if (error.status === 404) {
-            throw new NotFoundError("track", id);
-          }
-        }
-        // Re-throw any other errors
-        throw error;
+        throw transformError(error, "track", id);
       }
     },
 
@@ -212,24 +321,28 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
       const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
       const offset = options?.offset ?? 0;
 
-      // Call Spotify SDK search API
-      const searchResults = await sdk.search(
-        query,
-        ["track"],
-        undefined,
-        limit,
-        offset,
-      );
+      try {
+        // Call Spotify SDK search API
+        const searchResults = await sdk.search(
+          query,
+          ["track"],
+          undefined,
+          limit,
+          offset,
+        );
 
-      // Transform Spotify tracks to musix.js Track type
-      const tracks = searchResults.tracks.items.map(transformTrack);
+        // Transform Spotify tracks to musix.js Track type
+        const tracks = searchResults.tracks.items.map(transformTrack);
 
-      return {
-        items: tracks,
-        total: searchResults.tracks.total,
-        limit,
-        offset,
-      };
+        return {
+          items: tracks,
+          total: searchResults.tracks.total,
+          limit,
+          offset,
+        };
+      } catch (error) {
+        throw transformError(error, "track", query);
+      }
     },
 
     /**
@@ -243,14 +356,7 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
         const spotifyAlbum = await sdk.albums.get(id);
         return transformAlbum(spotifyAlbum);
       } catch (error) {
-        // Check if it's a 404 error (album not found)
-        if (error && typeof error === "object" && "status" in error) {
-          if (error.status === 404) {
-            throw new NotFoundError("album", id);
-          }
-        }
-        // Re-throw any other errors
-        throw error;
+        throw transformError(error, "album", id);
       }
     },
 
@@ -265,14 +371,7 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
         const spotifyArtist = await sdk.artists.get(id);
         return transformArtist(spotifyArtist);
       } catch (error) {
-        // Check if it's a 404 error (artist not found)
-        if (error && typeof error === "object" && "status" in error) {
-          if (error.status === 404) {
-            throw new NotFoundError("artist", id);
-          }
-        }
-        // Re-throw any other errors
-        throw error;
+        throw transformError(error, "artist", id);
       }
     },
 
@@ -287,14 +386,7 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
         const spotifyPlaylist = await sdk.playlists.getPlaylist(id);
         return transformPlaylist(spotifyPlaylist);
       } catch (error) {
-        // Check if it's a 404 error (playlist not found)
-        if (error && typeof error === "object" && "status" in error) {
-          if (error.status === 404) {
-            throw new NotFoundError("playlist", id);
-          }
-        }
-        // Re-throw any other errors
-        throw error;
+        throw transformError(error, "playlist", id);
       }
     },
   };

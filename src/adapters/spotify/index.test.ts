@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
-import { NotFoundError } from "../../core/errors";
+import {
+  AuthenticationError,
+  NetworkError,
+  NotFoundError,
+  RateLimitError,
+  SpotifyApiError,
+} from "../../core/errors";
 import type { SpotifyAdapter, SpotifyConfig } from "../../core/types";
 
 // Import the factory function (will fail until FR-001 is implemented)
@@ -3143,23 +3149,24 @@ describe("getPlaylist", () => {
   });
 
   describe("Error Propagation", () => {
-    // Critical: Non-404 errors should propagate without conversion
-    test("should propagate non-404 errors without converting to NotFoundError", async () => {
+    // Critical: Non-404 errors should be transformed to SpotifyApiError
+    test("should transform non-404 errors to SpotifyApiError", async () => {
       // Given: SDK throws 500 error
       const mockSdk = createMockSdkForPlaylist(undefined, true, 500);
       const adapter = createMockedAdapterForPlaylist(mockSdk);
 
-      // When/Then: error is propagated, not converted to NotFoundError
+      // When/Then: error is transformed to SpotifyApiError with statusCode
       try {
         await adapter.getPlaylist("test-id");
         throw new Error("Expected error to be thrown");
       } catch (error) {
         expect(error).not.toBeInstanceOf(NotFoundError);
-        expect((error as { status: number }).status).toBe(500);
+        expect(error).toBeInstanceOf(SpotifyApiError);
+        expect((error as SpotifyApiError).statusCode).toBe(500);
       }
     });
 
-    test("should propagate errors without status property", async () => {
+    test("should transform errors without status property to NetworkError", async () => {
       // Given: SDK throws error without status (network error)
       const mockGet = mock(async () => {
         throw new Error("Network timeout");
@@ -3176,10 +3183,810 @@ describe("getPlaylist", () => {
       };
       const adapter = createSpotifyAdapter(config);
 
-      // When/Then: error is propagated as-is
+      // When/Then: error is transformed to NetworkError
       await expect(adapter.getPlaylist("test-id")).rejects.toThrow(
-        "Network timeout",
+        NetworkError,
       );
+    });
+  });
+});
+
+// NFR-002: Error Handling
+describe("Error Handling [NFR-002]", () => {
+  // Helper to create mocked adapter with custom SDK behavior
+  const createMockedAdapterWithError = (
+    mockImplementation: () => ReturnType<
+      typeof SpotifyApi.withClientCredentials
+    >,
+  ) => {
+    SpotifyApi.withClientCredentials = mock(mockImplementation);
+    const config: SpotifyConfig = {
+      clientId: "test-client-id",
+      clientSecret: "test-client-secret",
+    };
+    return createSpotifyAdapter(config);
+  };
+
+  // AC-002: Invalid credentials [FR-001, Error]
+  describe("AuthenticationError - Invalid Credentials", () => {
+    test("should throw AuthenticationError when SDK returns 401 on getTrack", async () => {
+      // Given: SDK configured with invalid credentials that returns 401
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Invalid client credentials") as Error & {
+          status: number;
+        };
+        error.status = 401;
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: calling getTrack throws AuthenticationError
+      await expect(adapter.getTrack("track-id")).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should throw AuthenticationError with correct message on 401", async () => {
+      // Given: SDK returns 401 error
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Invalid client credentials") as Error & {
+          status: number;
+        };
+        error.status = 401;
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When: calling getTrack with invalid credentials
+      try {
+        await adapter.getTrack("track-id");
+        throw new Error("Expected AuthenticationError to be thrown");
+      } catch (error) {
+        // Then: error message contains "Invalid client credentials"
+        expect(error).toBeInstanceOf(AuthenticationError);
+        expect((error as Error).message).toContain(
+          "Invalid client credentials",
+        );
+      }
+    });
+
+    test("should throw AuthenticationError on searchTracks with 401", async () => {
+      // Given: SDK returns 401 on search
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Invalid client credentials") as Error & {
+          status: number;
+        };
+        error.status = 401;
+        return {
+          search: mock(async () => {
+            throw error;
+          }),
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: searchTracks throws AuthenticationError
+      await expect(adapter.searchTracks("query")).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should throw AuthenticationError on getAlbum with 401", async () => {
+      // Given: SDK returns 401 on album fetch
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Invalid client credentials") as Error & {
+          status: number;
+        };
+        error.status = 401;
+        return {
+          albums: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: getAlbum throws AuthenticationError
+      await expect(adapter.getAlbum("album-id")).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should throw AuthenticationError on getArtist with 401", async () => {
+      // Given: SDK returns 401 on artist fetch
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Invalid client credentials") as Error & {
+          status: number;
+        };
+        error.status = 401;
+        return {
+          artists: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: getArtist throws AuthenticationError
+      await expect(adapter.getArtist("artist-id")).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should throw AuthenticationError on getPlaylist with 401", async () => {
+      // Given: SDK returns 401 on playlist fetch
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Invalid client credentials") as Error & {
+          status: number;
+        };
+        error.status = 401;
+        return {
+          playlists: {
+            getPlaylist: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: getPlaylist throws AuthenticationError
+      await expect(adapter.getPlaylist("playlist-id")).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should be catchable with instanceof AuthenticationError", async () => {
+      // Given: SDK returns 401
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Invalid client credentials") as Error & {
+          status: number;
+        };
+        error.status = 401;
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: can catch using instanceof
+      try {
+        await adapter.getTrack("track-id");
+        throw new Error("Expected AuthenticationError to be thrown");
+      } catch (error) {
+        const isAuthError = error instanceof AuthenticationError;
+        expect(isAuthError).toBe(true);
+      }
+    });
+  });
+
+  // AC-009: Rate limit error [NFR-002, Error]
+  describe("RateLimitError - Rate Limiting", () => {
+    test("should throw RateLimitError when SDK returns 429 on getTrack", async () => {
+      // Given: API rate limit has been exceeded (429 response)
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Rate limit exceeded") as Error & {
+          status: number;
+          headers?: { "retry-after": string };
+        };
+        error.status = 429;
+        error.headers = { "retry-after": "60" };
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: calling getTrack throws RateLimitError
+      await expect(adapter.getTrack("track-id")).rejects.toThrow(
+        RateLimitError,
+      );
+    });
+
+    test("should throw RateLimitError with positive retryAfter value", async () => {
+      // Given: API returns 429 with Retry-After header
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Rate limit exceeded") as Error & {
+          status: number;
+          headers?: { "retry-after": string };
+        };
+        error.status = 429;
+        error.headers = { "retry-after": "120" };
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When: calling API method during rate limit
+      try {
+        await adapter.getTrack("track-id");
+        throw new Error("Expected RateLimitError to be thrown");
+      } catch (error) {
+        // Then: retryAfter is a positive number from Retry-After header
+        expect(error).toBeInstanceOf(RateLimitError);
+        if (error instanceof RateLimitError) {
+          expect(error.retryAfter).toBe(120);
+          expect(error.retryAfter).toBeGreaterThan(0);
+        }
+      }
+    });
+
+    test("should throw RateLimitError on searchTracks with 429", async () => {
+      // Given: API rate limit exceeded on search
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Rate limit exceeded") as Error & {
+          status: number;
+          headers?: { "retry-after": string };
+        };
+        error.status = 429;
+        error.headers = { "retry-after": "30" };
+        return {
+          search: mock(async () => {
+            throw error;
+          }),
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: searchTracks throws RateLimitError
+      await expect(adapter.searchTracks("query")).rejects.toThrow(
+        RateLimitError,
+      );
+    });
+
+    test("should throw RateLimitError on getAlbum with 429", async () => {
+      // Given: API rate limit exceeded on album fetch
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Rate limit exceeded") as Error & {
+          status: number;
+          headers?: { "retry-after": string };
+        };
+        error.status = 429;
+        error.headers = { "retry-after": "45" };
+        return {
+          albums: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: getAlbum throws RateLimitError with retryAfter
+      try {
+        await adapter.getAlbum("album-id");
+        throw new Error("Expected RateLimitError to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(RateLimitError);
+        if (error instanceof RateLimitError) {
+          expect(error.retryAfter).toBe(45);
+        }
+      }
+    });
+
+    test("should throw RateLimitError on getArtist with 429", async () => {
+      // Given: API rate limit exceeded on artist fetch
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Rate limit exceeded") as Error & {
+          status: number;
+          headers?: { "retry-after": string };
+        };
+        error.status = 429;
+        error.headers = { "retry-after": "90" };
+        return {
+          artists: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: getArtist throws RateLimitError
+      await expect(adapter.getArtist("artist-id")).rejects.toThrow(
+        RateLimitError,
+      );
+    });
+
+    test("should throw RateLimitError on getPlaylist with 429", async () => {
+      // Given: API rate limit exceeded on playlist fetch
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Rate limit exceeded") as Error & {
+          status: number;
+          headers?: { "retry-after": string };
+        };
+        error.status = 429;
+        error.headers = { "retry-after": "60" };
+        return {
+          playlists: {
+            getPlaylist: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: getPlaylist throws RateLimitError
+      await expect(adapter.getPlaylist("playlist-id")).rejects.toThrow(
+        RateLimitError,
+      );
+    });
+
+    test("should handle missing Retry-After header with default value", async () => {
+      // Given: API returns 429 without Retry-After header
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Rate limit exceeded") as Error & {
+          status: number;
+        };
+        error.status = 429;
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When: calling API during rate limit without Retry-After header
+      try {
+        await adapter.getTrack("track-id");
+        throw new Error("Expected RateLimitError to be thrown");
+      } catch (error) {
+        // Then: error should still be RateLimitError with reasonable default
+        expect(error).toBeInstanceOf(RateLimitError);
+        if (error instanceof RateLimitError) {
+          expect(error.retryAfter).toBeGreaterThan(0);
+        }
+      }
+    });
+
+    test("should be catchable with instanceof RateLimitError", async () => {
+      // Given: API returns 429
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Rate limit exceeded") as Error & {
+          status: number;
+          headers?: { "retry-after": string };
+        };
+        error.status = 429;
+        error.headers = { "retry-after": "60" };
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: can catch using instanceof
+      try {
+        await adapter.getTrack("track-id");
+        throw new Error("Expected RateLimitError to be thrown");
+      } catch (error) {
+        const isRateLimitError = error instanceof RateLimitError;
+        expect(isRateLimitError).toBe(true);
+      }
+    });
+  });
+
+  // AC-010: Network error [NFR-002, Error]
+  describe("NetworkError - Network Failures", () => {
+    test("should throw NetworkError when network is unavailable on getTrack", async () => {
+      // Given: Network connection is unavailable
+      const adapter = createMockedAdapterWithError(() => {
+        const networkError = new Error("fetch failed");
+        networkError.name = "FetchError";
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw networkError;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: calling getTrack throws NetworkError
+      await expect(adapter.getTrack("track-id")).rejects.toThrow(NetworkError);
+    });
+
+    test("should throw NetworkError on connection timeout", async () => {
+      // Given: Network request times out
+      const adapter = createMockedAdapterWithError(() => {
+        const timeoutError = new Error("Request timeout");
+        timeoutError.name = "TimeoutError";
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw timeoutError;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: calling getTrack throws NetworkError
+      await expect(adapter.getTrack("track-id")).rejects.toThrow(NetworkError);
+    });
+
+    test("should throw NetworkError with cause property", async () => {
+      // Given: Network error occurs
+      const originalError = new Error("Connection refused");
+      const adapter = createMockedAdapterWithError(() => {
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw originalError;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When: network error occurs
+      try {
+        await adapter.getTrack("track-id");
+        throw new Error("Expected NetworkError to be thrown");
+      } catch (error) {
+        // Then: NetworkError contains original error as cause
+        expect(error).toBeInstanceOf(NetworkError);
+        if (error instanceof NetworkError) {
+          expect(error.cause).toBeDefined();
+        }
+      }
+    });
+
+    test("should throw NetworkError on searchTracks with network failure", async () => {
+      // Given: Network failure on search
+      const adapter = createMockedAdapterWithError(() => {
+        return {
+          search: mock(async () => {
+            throw new Error("Network unavailable");
+          }),
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: searchTracks throws NetworkError
+      await expect(adapter.searchTracks("query")).rejects.toThrow(NetworkError);
+    });
+
+    test("should throw NetworkError on getAlbum with network failure", async () => {
+      // Given: Network failure on album fetch
+      const adapter = createMockedAdapterWithError(() => {
+        return {
+          albums: {
+            get: mock(async () => {
+              throw new Error("DNS resolution failed");
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: getAlbum throws NetworkError
+      await expect(adapter.getAlbum("album-id")).rejects.toThrow(NetworkError);
+    });
+
+    test("should throw NetworkError on getArtist with network failure", async () => {
+      // Given: Network failure on artist fetch
+      const adapter = createMockedAdapterWithError(() => {
+        return {
+          artists: {
+            get: mock(async () => {
+              throw new Error("Socket timeout");
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: getArtist throws NetworkError
+      await expect(adapter.getArtist("artist-id")).rejects.toThrow(
+        NetworkError,
+      );
+    });
+
+    test("should throw NetworkError on getPlaylist with network failure", async () => {
+      // Given: Network failure on playlist fetch
+      const adapter = createMockedAdapterWithError(() => {
+        return {
+          playlists: {
+            getPlaylist: mock(async () => {
+              throw new Error("Network interface down");
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: getPlaylist throws NetworkError
+      await expect(adapter.getPlaylist("playlist-id")).rejects.toThrow(
+        NetworkError,
+      );
+    });
+
+    test("should be catchable with instanceof NetworkError", async () => {
+      // Given: Network error occurs
+      const adapter = createMockedAdapterWithError(() => {
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw new Error("Network error");
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: can catch using instanceof
+      try {
+        await adapter.getTrack("track-id");
+        throw new Error("Expected NetworkError to be thrown");
+      } catch (error) {
+        const isNetworkError = error instanceof NetworkError;
+        expect(isNetworkError).toBe(true);
+      }
+    });
+  });
+
+  // Additional error handling: SpotifyApiError for other API errors
+  describe("SpotifyApiError - Other API Errors", () => {
+    test("should throw SpotifyApiError on 500 Internal Server Error", async () => {
+      // Given: Spotify API returns 500 error
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Internal Server Error") as Error & {
+          status: number;
+        };
+        error.status = 500;
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: calling getTrack throws SpotifyApiError
+      await expect(adapter.getTrack("track-id")).rejects.toThrow(
+        SpotifyApiError,
+      );
+    });
+
+    test("should throw SpotifyApiError with correct statusCode", async () => {
+      // Given: API returns 503 Service Unavailable
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Service Unavailable") as Error & {
+          status: number;
+        };
+        error.status = 503;
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When: calling API during service outage
+      try {
+        await adapter.getTrack("track-id");
+        throw new Error("Expected SpotifyApiError to be thrown");
+      } catch (error) {
+        // Then: error has correct status code
+        expect(error).toBeInstanceOf(SpotifyApiError);
+        if (error instanceof SpotifyApiError) {
+          expect(error.statusCode).toBe(503);
+        }
+      }
+    });
+
+    test("should throw SpotifyApiError on 502 Bad Gateway", async () => {
+      // Given: API returns 502 error
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Bad Gateway") as Error & { status: number };
+        error.status = 502;
+        return {
+          search: mock(async () => {
+            throw error;
+          }),
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: searchTracks throws SpotifyApiError
+      await expect(adapter.searchTracks("query")).rejects.toThrow(
+        SpotifyApiError,
+      );
+    });
+
+    test("should be catchable with instanceof SpotifyApiError", async () => {
+      // Given: API returns 500
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Internal Server Error") as Error & {
+          status: number;
+        };
+        error.status = 500;
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: can catch using instanceof
+      try {
+        await adapter.getTrack("track-id");
+        throw new Error("Expected SpotifyApiError to be thrown");
+      } catch (error) {
+        const isSpotifyApiError = error instanceof SpotifyApiError;
+        expect(isSpotifyApiError).toBe(true);
+      }
+    });
+  });
+
+  // Error differentiation tests
+  describe("Error Type Differentiation", () => {
+    test("should differentiate between 401, 404, 429, 500, and network errors", async () => {
+      // Table-driven test for different error types
+      const errorScenarios = [
+        {
+          name: "401 returns AuthenticationError",
+          status: 401,
+          expectedType: AuthenticationError,
+        },
+        {
+          name: "404 returns NotFoundError",
+          status: 404,
+          expectedType: NotFoundError,
+        },
+        {
+          name: "429 returns RateLimitError",
+          status: 429,
+          expectedType: RateLimitError,
+        },
+        {
+          name: "500 returns SpotifyApiError",
+          status: 500,
+          expectedType: SpotifyApiError,
+        },
+        {
+          name: "503 returns SpotifyApiError",
+          status: 503,
+          expectedType: SpotifyApiError,
+        },
+      ];
+
+      for (const scenario of errorScenarios) {
+        // Given: API returns specific status code
+        const adapter = createMockedAdapterWithError(() => {
+          const error = new Error("API Error") as Error & {
+            status: number;
+            headers?: { "retry-after": string };
+          };
+          error.status = scenario.status;
+          if (scenario.status === 429) {
+            error.headers = { "retry-after": "60" };
+          }
+          return {
+            tracks: {
+              get: mock(async () => {
+                throw error;
+              }),
+            },
+          } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+        });
+
+        // When/Then: correct error type is thrown
+        try {
+          await adapter.getTrack("track-id");
+          throw new Error(
+            `Expected ${scenario.expectedType.name} to be thrown for ${scenario.name}`,
+          );
+        } catch (error) {
+          expect(error).toBeInstanceOf(scenario.expectedType);
+        }
+      }
+    });
+
+    test("should handle error type precedence correctly", async () => {
+      // Verify that specific error types take precedence over generic ones
+      // 404 should be NotFoundError, not SpotifyApiError
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("Not found") as Error & { status: number };
+        error.status = 404;
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      try {
+        await adapter.getTrack("track-id");
+        throw new Error("Expected error to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NotFoundError);
+        expect(error).not.toBeInstanceOf(SpotifyApiError);
+      }
+    });
+  });
+
+  // Edge cases for error handling
+  describe("Error Handling Edge Cases", () => {
+    test("should handle error without status property as NetworkError", async () => {
+      // Given: Error without status property (network error)
+      const adapter = createMockedAdapterWithError(() => {
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw new Error("Connection reset");
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: throws NetworkError
+      await expect(adapter.getTrack("track-id")).rejects.toThrow(NetworkError);
+    });
+
+    test("should handle non-Error objects thrown by SDK", async () => {
+      // Given: SDK throws non-Error object
+      const adapter = createMockedAdapterWithError(() => {
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw "String error"; // eslint-disable-line @typescript-eslint/only-throw-error
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When/Then: error is still thrown (may be wrapped)
+      await expect(adapter.getTrack("track-id")).rejects.toThrow();
+    });
+
+    test("should preserve error stack traces", async () => {
+      // Given: API error occurs
+      const adapter = createMockedAdapterWithError(() => {
+        const error = new Error("API Error") as Error & { status: number };
+        error.status = 500;
+        return {
+          tracks: {
+            get: mock(async () => {
+              throw error;
+            }),
+          },
+        } as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>;
+      });
+
+      // When: error is caught
+      try {
+        await adapter.getTrack("track-id");
+        throw new Error("Expected error to be thrown");
+      } catch (error) {
+        // Then: stack trace should be preserved
+        expect(error).toBeInstanceOf(SpotifyApiError);
+        expect((error as Error).stack).toBeDefined();
+        expect((error as Error).stack?.length).toBeGreaterThan(0);
+      }
     });
   });
 });
