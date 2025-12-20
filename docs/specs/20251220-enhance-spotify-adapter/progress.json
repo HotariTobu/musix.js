@@ -9,7 +9,7 @@
     { "id": "CH-005", "passes": true },
     { "id": "CH-006", "passes": true },
     { "id": "CH-007", "passes": true },
-    { "id": "CH-008", "passes": false },
+    { "id": "CH-008", "passes": true },
     { "id": "CH-009", "passes": false },
     { "id": "CH-010", "passes": false },
     { "id": "CH-011", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "Related Data started (CH-007 complete). Next session should start with CH-008 (getArtistTopTracks)."
+  "notes": "Related Data in progress (CH-007, CH-008 complete). Next session should start with CH-009 (getAlbumTracks)."
 }

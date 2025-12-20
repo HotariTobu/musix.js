@@ -1,6 +1,7 @@
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 import type {
   IValidateResponses,
+  Market,
   MaxInt,
   Album as SpotifyAlbum,
   Artist as SpotifyArtist,
@@ -722,6 +723,34 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
             offset,
             hasNext,
           };
+        },
+        "artist",
+        artistId,
+      );
+    },
+
+    /**
+     * Retrieves an artist's top tracks.
+     * @param artistId - The Spotify artist ID
+     * @param market - ISO 3166-1 alpha-2 country code (e.g., "US", "JP")
+     * @returns Promise resolving to array of Track objects (up to 10)
+     */
+    async getArtistTopTracks(
+      artistId: string,
+      market: string,
+    ): Promise<Track[]> {
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          // Call Spotify SDK to get artist's top tracks
+          // Cast market string to Market type (SDK requires specific country code union)
+          const response = await sdk.artists.topTracks(
+            artistId,
+            market as Market,
+          );
+
+          // Transform Spotify tracks to musix.js Track type
+          return response.tracks.map(transformTrack);
         },
         "artist",
         artistId,
