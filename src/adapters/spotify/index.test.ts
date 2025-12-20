@@ -9743,4 +9743,530 @@ describe("createSpotifyUserAdapter", () => {
       await expect(adapter.removeSavedTrack("invalid-id")).rejects.toThrow();
     });
   });
+
+  describe("AC-030: Get User Playlists [CH-022]", () => {
+    test("should return PaginatedResult<SimplifiedPlaylist> with user's playlists", async () => {
+      // Given: User is authenticated and has playlists
+      const mockUserPlaylists = {
+        items: [
+          {
+            id: "playlist-001",
+            name: "My Favorite Songs",
+            description: "A collection of my favorite tracks",
+            owner: {
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            },
+            tracks: {
+              total: 42,
+            },
+            images: [
+              {
+                url: "https://i.scdn.co/image/playlist001",
+                width: 640,
+                height: 640,
+              },
+            ],
+            external_urls: {
+              spotify: "https://open.spotify.com/playlist/playlist-001",
+            },
+          },
+          {
+            id: "playlist-002",
+            name: "Workout Mix",
+            description: null,
+            owner: {
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            },
+            tracks: {
+              total: 25,
+            },
+            images: [
+              {
+                url: "https://i.scdn.co/image/playlist002",
+                width: 640,
+                height: 640,
+              },
+            ],
+            external_urls: {
+              spotify: "https://open.spotify.com/playlist/playlist-002",
+            },
+          },
+        ],
+        total: 50,
+        limit: 20,
+        offset: 0,
+      };
+
+      const playlistsMock = mock(async () => mockUserPlaylists);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          playlists: {
+            playlists: playlistsMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-read-private"],
+      });
+
+      // When: getUserPlaylists() is called
+      const result = await adapter.getUserPlaylists();
+
+      // Then: Returns PaginatedResult<SimplifiedPlaylist> with user's playlists
+      expect(result).toBeObject();
+      expect(result.items).toBeArray();
+      expect(result.items).toHaveLength(2);
+      expect(result.total).toBe(50);
+      expect(result.limit).toBe(20);
+      expect(result.offset).toBe(0);
+      expect(result.hasNext).toBe(true); // offset (0) + items.length (2) < total (50)
+
+      // Verify first playlist
+      expect(result.items[0].id).toBe("playlist-001");
+      expect(result.items[0].name).toBe("My Favorite Songs");
+      expect(result.items[0].description).toBe(
+        "A collection of my favorite tracks",
+      );
+      expect(result.items[0].owner.id).toBe("user-123");
+      expect(result.items[0].owner.displayName).toBe("Test User");
+      expect(result.items[0].totalTracks).toBe(42);
+      expect(result.items[0].images).toHaveLength(1);
+      expect(result.items[0].images[0].url).toBe(
+        "https://i.scdn.co/image/playlist001",
+      );
+      expect(result.items[0].externalUrl).toBe(
+        "https://open.spotify.com/playlist/playlist-001",
+      );
+
+      // Verify second playlist
+      expect(result.items[1].id).toBe("playlist-002");
+      expect(result.items[1].name).toBe("Workout Mix");
+      expect(result.items[1].description).toBeNull();
+      expect(result.items[1].totalTracks).toBe(25);
+
+      // Verify SDK method was called with default parameters
+      expect(playlistsMock).toHaveBeenCalledWith(20, 0);
+    });
+
+    test("should return user playlists with custom limit and offset", async () => {
+      // Given: User is authenticated
+      const mockUserPlaylists = {
+        items: [
+          {
+            id: "playlist-101",
+            name: "Test Playlist 101",
+            description: "Description for playlist 101",
+            owner: {
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            },
+            tracks: {
+              total: 10,
+            },
+            images: [
+              {
+                url: "https://i.scdn.co/image/playlist101",
+                width: 640,
+                height: 640,
+              },
+            ],
+            external_urls: {
+              spotify: "https://open.spotify.com/playlist/playlist-101",
+            },
+          },
+        ],
+        total: 50,
+        limit: 10,
+        offset: 30,
+      };
+
+      const playlistsMock = mock(async () => mockUserPlaylists);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          playlists: {
+            playlists: playlistsMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-read-private"],
+      });
+
+      // When: getUserPlaylists({ limit: 10, offset: 30 }) is called
+      const result = await adapter.getUserPlaylists({ limit: 10, offset: 30 });
+
+      // Then: Returns results starting from offset 30 with limit 10
+      expect(result.items).toHaveLength(1);
+      expect(result.total).toBe(50);
+      expect(result.limit).toBe(10);
+      expect(result.offset).toBe(30);
+      expect(result.hasNext).toBe(true); // offset (30) + items.length (1) < total (50)
+
+      // Verify SDK method was called with custom parameters
+      expect(playlistsMock).toHaveBeenCalledWith(10, 30);
+    });
+
+    test("should correctly calculate hasNext as true when more playlists exist", async () => {
+      // Given: User is authenticated with pagination scenario where more playlists exist
+      const mockUserPlaylists = {
+        items: [
+          {
+            id: "playlist-101",
+            name: "Test Playlist",
+            description: null,
+            owner: {
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            },
+            tracks: {
+              total: 15,
+            },
+            images: [
+              {
+                url: "https://i.scdn.co/image/playlist101",
+                width: 640,
+                height: 640,
+              },
+            ],
+            external_urls: {
+              spotify: "https://open.spotify.com/playlist/playlist-101",
+            },
+          },
+        ],
+        total: 100,
+        limit: 20,
+        offset: 40,
+      };
+
+      const playlistsMock = mock(async () => mockUserPlaylists);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          playlists: {
+            playlists: playlistsMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-read-private"],
+      });
+
+      // When: getUserPlaylists() is called
+      const result = await adapter.getUserPlaylists({ limit: 20, offset: 40 });
+
+      // Then: hasNext is true because offset (40) + items.length (1) = 41 < total (100)
+      expect(result.hasNext).toBe(true);
+      expect(result.offset).toBe(40);
+      expect(result.total).toBe(100);
+      expect(result.items).toHaveLength(1);
+    });
+
+    test("should correctly calculate hasNext as false when no more playlists exist", async () => {
+      // Given: User is authenticated at the end of pagination
+      const mockUserPlaylists = {
+        items: [
+          {
+            id: "playlist-050",
+            name: "Last Playlist",
+            description: "The final playlist",
+            owner: {
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            },
+            tracks: {
+              total: 5,
+            },
+            images: [
+              {
+                url: "https://i.scdn.co/image/playlist050",
+                width: 640,
+                height: 640,
+              },
+            ],
+            external_urls: {
+              spotify: "https://open.spotify.com/playlist/playlist-050",
+            },
+          },
+        ],
+        total: 50,
+        limit: 20,
+        offset: 49,
+      };
+
+      const playlistsMock = mock(async () => mockUserPlaylists);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          playlists: {
+            playlists: playlistsMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-read-private"],
+      });
+
+      // When: getUserPlaylists() is called at the last page
+      const result = await adapter.getUserPlaylists({ limit: 20, offset: 49 });
+
+      // Then: hasNext is false because offset (49) + items.length (1) = 50 >= total (50)
+      expect(result.hasNext).toBe(false);
+      expect(result.offset).toBe(49);
+      expect(result.total).toBe(50);
+      expect(result.items).toHaveLength(1);
+    });
+
+    test("should return empty items array when user has no playlists", async () => {
+      // Given: User is authenticated but has no playlists
+      const mockUserPlaylists = {
+        items: [],
+        total: 0,
+        limit: 20,
+        offset: 0,
+      };
+
+      const playlistsMock = mock(async () => mockUserPlaylists);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          playlists: {
+            playlists: playlistsMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-read-private"],
+      });
+
+      // When: getUserPlaylists() is called
+      const result = await adapter.getUserPlaylists();
+
+      // Then: Returns empty PaginatedResult
+      expect(result.items).toBeArray();
+      expect(result.items).toHaveLength(0);
+      expect(result.total).toBe(0);
+      expect(result.limit).toBe(20);
+      expect(result.offset).toBe(0);
+      expect(result.hasNext).toBe(false);
+      expect(playlistsMock).toHaveBeenCalledWith(20, 0);
+    });
+
+    test("should handle authentication error", async () => {
+      // Given: User is not authenticated (401 Unauthorized)
+      const error = new Error("Unauthorized") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 401;
+      error.headers = {};
+
+      const playlistsMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          playlists: {
+            playlists: playlistsMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-read-private"],
+      });
+
+      // When: getUserPlaylists is called without authentication
+      // Then: AuthenticationError is thrown
+      await expect(adapter.getUserPlaylists()).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should handle rate limit error", async () => {
+      // Given: Rate limit is exceeded (429 Too Many Requests)
+      const error = new Error("Too Many Requests") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 429;
+      error.headers = { "retry-after": "10" };
+
+      const playlistsMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          playlists: {
+            playlists: playlistsMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-read-private"],
+      });
+
+      // When: getUserPlaylists is called and rate limit is exceeded
+      // Then: RateLimitError is thrown with retryAfter value
+      try {
+        await adapter.getUserPlaylists();
+        throw new Error("Expected RateLimitError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(RateLimitError);
+        expect((err as RateLimitError).retryAfter).toBe(10);
+      }
+    });
+  });
 });

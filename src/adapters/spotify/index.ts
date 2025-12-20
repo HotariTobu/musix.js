@@ -1198,8 +1198,52 @@ export function createSpotifyUserAdapter(
     async unfollowArtist() {
       throw new Error("Not implemented");
     },
-    async getUserPlaylists() {
-      throw new Error("Not implemented");
+    /**
+     * Gets the current user's playlists.
+     * @param options - Optional pagination options (limit, offset)
+     * @returns PaginatedResult containing user's playlists
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {RateLimitError} If rate limit is exceeded
+     */
+    async getUserPlaylists(
+      options?: SearchOptions,
+    ): Promise<PaginatedResult<SimplifiedPlaylist>> {
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      try {
+        const response = await sdk.currentUser.playlists.playlists(
+          limit,
+          offset,
+        );
+
+        const playlists = response.items.map((playlist) =>
+          transformSimplifiedPlaylist(playlist as SpotifySimplifiedPlaylist),
+        );
+
+        const hasNext = offset + response.items.length < response.total;
+
+        return {
+          items: playlists,
+          total: response.total,
+          limit,
+          offset,
+          hasNext,
+        };
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid client credentials");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+        throw error;
+      }
     },
     async getRecommendations() {
       throw new Error("Not implemented");
