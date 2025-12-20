@@ -1230,11 +1230,53 @@ export function createSpotifyUserAdapter(
         throw error;
       }
     },
-    async saveAlbum() {
-      throw new Error("Not implemented");
+    /**
+     * Adds an album to the user's library.
+     * @param id - The Spotify album ID
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {RateLimitError} If rate limit is exceeded
+     */
+    async saveAlbum(id: string): Promise<void> {
+      try {
+        await sdk.currentUser.albums.saveAlbums([id]);
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid client credentials");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+        throw error;
+      }
     },
-    async removeSavedAlbum() {
-      throw new Error("Not implemented");
+    /**
+     * Removes an album from the user's library.
+     * @param id - The Spotify album ID
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {RateLimitError} If rate limit is exceeded
+     */
+    async removeSavedAlbum(id: string): Promise<void> {
+      try {
+        await sdk.currentUser.albums.removeSavedAlbums([id]);
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid client credentials");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+        throw error;
+      }
     },
     async getFollowedArtists() {
       throw new Error("Not implemented");

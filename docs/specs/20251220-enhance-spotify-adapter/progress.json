@@ -25,7 +25,7 @@
     { "id": "CH-021", "passes": true },
     { "id": "CH-022", "passes": true },
     { "id": "CH-023", "passes": true },
-    { "id": "CH-024", "passes": false },
+    { "id": "CH-024", "passes": true },
     { "id": "CH-025", "passes": false },
     { "id": "CH-026", "passes": false },
     { "id": "CH-027", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "CH-023 (getSavedAlbums) complete with error handling. 23/42 requirements passing. Next session should start with CH-024 (saveAlbum/removeSavedAlbum) - implement methods via sdk.currentUser.albums.saveAlbums([id])/removeSavedAlbums([id]). Follow existing patterns from saveTrack/removeSavedTrack implementation."
+  "notes": "CH-024 (saveAlbum/removeSavedAlbum) complete with error handling. 24/42 requirements passing. Next session should start with CH-025 (getFollowedArtists) - implement method via sdk.currentUser.followedArtists(type, limit). Follow existing patterns from getSavedTracks/getSavedAlbums implementation."
 }
