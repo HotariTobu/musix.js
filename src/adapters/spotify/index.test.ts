@@ -11817,3 +11817,860 @@ describe("createSpotifyUserAdapter", () => {
     });
   });
 });
+
+// CH-027: Get Recommendations
+describe("getRecommendations", () => {
+  describe("AC-039: Get Recommendations [CH-027]", () => {
+    test("should return array of Track objects when called with valid trackIds seed", async () => {
+      // Given: Valid adapter with authentication
+      const mockTrack1 = createMockSpotifyTrack({
+        id: "rec-track-1",
+        name: "Recommended Track 1",
+      });
+      const mockTrack2 = createMockSpotifyTrack({
+        id: "rec-track-2",
+        name: "Recommended Track 2",
+      });
+
+      const recommendationsMock = mock(async () => ({
+        tracks: [mockTrack1, mockTrack2],
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: recommendationsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations({ trackIds: ["id1"] }) is called
+      const result = await adapter.getRecommendations({
+        trackIds: ["seed-track-1"],
+      });
+
+      // Then: Returns array of Track objects
+      expect(result).toBeArray();
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBeObject();
+      expect(result[0].id).toBe("rec-track-1");
+      expect(result[0].name).toBe("Recommended Track 1");
+      expect(result[1].id).toBe("rec-track-2");
+      expect(result[1].name).toBe("Recommended Track 2");
+    });
+
+    test("should return array of Track objects when called with artistIds seed", async () => {
+      // Given: Valid adapter with authentication
+      const mockTrack = createMockSpotifyTrack({
+        id: "rec-track-artist",
+        name: "Similar Artist Track",
+      });
+
+      const recommendationsMock = mock(async () => ({
+        tracks: [mockTrack],
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: recommendationsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations({ artistIds: ["artist1"] }) is called
+      const result = await adapter.getRecommendations({
+        artistIds: ["artist1"],
+      });
+
+      // Then: Returns array of Track objects
+      expect(result).toBeArray();
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("rec-track-artist");
+    });
+
+    test("should return array of Track objects when called with genres seed", async () => {
+      // Given: Valid adapter with authentication
+      const mockTrack = createMockSpotifyTrack({
+        id: "rec-track-genre",
+        name: "Genre Based Track",
+      });
+
+      const recommendationsMock = mock(async () => ({
+        tracks: [mockTrack],
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: recommendationsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations({ genres: ["rock"] }) is called
+      const result = await adapter.getRecommendations({
+        genres: ["rock"],
+      });
+
+      // Then: Returns array of Track objects
+      expect(result).toBeArray();
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("rec-track-genre");
+    });
+
+    test("should return array of Track objects when called with mixed seeds", async () => {
+      // Given: Valid adapter with authentication
+      const mockTracks = [
+        createMockSpotifyTrack({ id: "rec-1", name: "Rec 1" }),
+        createMockSpotifyTrack({ id: "rec-2", name: "Rec 2" }),
+        createMockSpotifyTrack({ id: "rec-3", name: "Rec 3" }),
+      ];
+
+      const recommendationsMock = mock(async () => ({
+        tracks: mockTracks,
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: recommendationsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations with mixed seeds is called
+      const result = await adapter.getRecommendations({
+        trackIds: ["track1", "track2"],
+        artistIds: ["artist1"],
+        genres: ["rock", "pop"],
+      });
+
+      // Then: Returns array of Track objects
+      expect(result).toBeArray();
+      expect(result).toHaveLength(3);
+    });
+
+    test("should respect limit option (default 20)", async () => {
+      // Given: Valid adapter with authentication
+      const mockTracks = Array.from({ length: 20 }, (_, i) =>
+        createMockSpotifyTrack({ id: `track-${i}`, name: `Track ${i}` }),
+      );
+
+      const recommendationsMock = mock(async (params: unknown) => {
+        const options = params as { limit?: number };
+        return {
+          tracks: mockTracks.slice(0, options.limit ?? 20),
+        };
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: recommendationsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations is called without limit option
+      const result = await adapter.getRecommendations({
+        trackIds: ["track1"],
+      });
+
+      // Then: Returns maximum 20 tracks (default limit)
+      expect(result).toBeArray();
+      expect(result.length).toBeLessThanOrEqual(20);
+    });
+
+    test("should respect custom limit option (max 100)", async () => {
+      // Given: Valid adapter with authentication
+      const mockTracks = Array.from({ length: 50 }, (_, i) =>
+        createMockSpotifyTrack({ id: `track-${i}`, name: `Track ${i}` }),
+      );
+
+      const recommendationsMock = mock(async () => ({
+        tracks: mockTracks,
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: recommendationsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations is called with custom limit
+      const result = await adapter.getRecommendations(
+        { trackIds: ["track1"] },
+        { limit: 50 },
+      );
+
+      // Then: Returns up to 50 tracks
+      expect(result).toBeArray();
+      expect(result).toHaveLength(50);
+    });
+
+    test("should handle recommendation options (targetEnergy, targetDanceability, etc.)", async () => {
+      // Given: Valid adapter with authentication
+      const mockTrack = createMockSpotifyTrack({
+        id: "energetic-track",
+        name: "High Energy Track",
+      });
+
+      const recommendationsMock = mock(async () => ({
+        tracks: [mockTrack],
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: recommendationsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations is called with recommendation options
+      const result = await adapter.getRecommendations(
+        { trackIds: ["track1"] },
+        {
+          targetEnergy: 0.8,
+          targetDanceability: 0.7,
+          targetValence: 0.6,
+          targetTempo: 120,
+        },
+      );
+
+      // Then: Returns tracks matching the criteria
+      expect(result).toBeArray();
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("energetic-track");
+    });
+
+    test("should return empty array when no recommendations available", async () => {
+      // Given: Valid adapter with authentication
+      const recommendationsMock = mock(async () => ({
+        tracks: [],
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: recommendationsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations is called but no recommendations exist
+      const result = await adapter.getRecommendations({
+        trackIds: ["obscure-track"],
+      });
+
+      // Then: Returns empty array
+      expect(result).toBeArray();
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  describe("AC-040: Get Recommendations - Invalid Seeds [CH-027]", () => {
+    test("should throw ValidationError when more than 5 total seeds (trackIds only)", async () => {
+      // Given: Valid adapter with authentication
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: mock(async () => ({ tracks: [] })),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations is called with more than 5 trackIds
+      // Then: Throws ValidationError with message about seed limit
+      await expect(
+        adapter.getRecommendations({
+          trackIds: ["t1", "t2", "t3", "t4", "t5", "t6"],
+        }),
+      ).rejects.toThrow(ValidationError);
+
+      try {
+        await adapter.getRecommendations({
+          trackIds: ["t1", "t2", "t3", "t4", "t5", "t6"],
+        });
+      } catch (error) {
+        expect(error).toBeInstanceOf(ValidationError);
+        expect((error as Error).message).toContain("seed");
+        expect((error as Error).message).toContain("5");
+      }
+    });
+
+    test("should throw ValidationError when more than 5 total seeds (artistIds only)", async () => {
+      // Given: Valid adapter with authentication
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: mock(async () => ({ tracks: [] })),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations is called with more than 5 artistIds
+      // Then: Throws ValidationError
+      await expect(
+        adapter.getRecommendations({
+          artistIds: ["a1", "a2", "a3", "a4", "a5", "a6"],
+        }),
+      ).rejects.toThrow(ValidationError);
+    });
+
+    test("should throw ValidationError when more than 5 total seeds (genres only)", async () => {
+      // Given: Valid adapter with authentication
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: mock(async () => ({ tracks: [] })),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations is called with more than 5 genres
+      // Then: Throws ValidationError
+      await expect(
+        adapter.getRecommendations({
+          genres: ["rock", "pop", "jazz", "blues", "country", "metal"],
+        }),
+      ).rejects.toThrow(ValidationError);
+    });
+
+    test("should throw ValidationError when more than 5 total seeds (mixed)", async () => {
+      // Given: Valid adapter with authentication
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: mock(async () => ({ tracks: [] })),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations is called with more than 5 total seeds across all types
+      // Then: Throws ValidationError
+      await expect(
+        adapter.getRecommendations({
+          trackIds: ["t1", "t2"],
+          artistIds: ["a1", "a2"],
+          genres: ["rock", "pop"],
+        }),
+      ).rejects.toThrow(ValidationError);
+    });
+
+    test("should accept exactly 5 seeds without throwing", async () => {
+      // Given: Valid adapter with authentication
+      const mockTrack = createMockSpotifyTrack();
+      const recommendationsMock = mock(async () => ({
+        tracks: [mockTrack],
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: recommendationsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations is called with exactly 5 seeds
+      // Then: Should not throw and return results
+      const result = await adapter.getRecommendations({
+        trackIds: ["t1", "t2"],
+        artistIds: ["a1"],
+        genres: ["rock", "pop"],
+      });
+
+      expect(result).toBeArray();
+      expect(recommendationsMock).toHaveBeenCalled();
+    });
+
+    test("should accept less than 5 seeds without throwing", async () => {
+      // Given: Valid adapter with authentication
+      const mockTrack = createMockSpotifyTrack();
+      const recommendationsMock = mock(async () => ({
+        tracks: [mockTrack],
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: recommendationsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations is called with less than 5 seeds
+      // Then: Should not throw and return results
+      const result = await adapter.getRecommendations({
+        trackIds: ["t1"],
+        genres: ["rock"],
+      });
+
+      expect(result).toBeArray();
+      expect(recommendationsMock).toHaveBeenCalled();
+    });
+  });
+
+  describe("Error Handling", () => {
+    test("should handle authentication error", async () => {
+      // Given: User is not authenticated (401 Unauthorized)
+      const error = new Error("Unauthorized") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 401;
+      error.headers = {};
+
+      const recommendationsMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: recommendationsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations is called without authentication
+      // Then: AuthenticationError is thrown
+      await expect(
+        adapter.getRecommendations({ trackIds: ["track1"] }),
+      ).rejects.toThrow(AuthenticationError);
+    });
+
+    test("should handle rate limit error", async () => {
+      // Given: Rate limit is exceeded (429 Too Many Requests)
+      const error = new Error("Too Many Requests") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 429;
+      error.headers = { "retry-after": "30" };
+
+      const recommendationsMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: recommendationsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations is called and rate limit is exceeded
+      // Then: RateLimitError is thrown with retryAfter value
+      try {
+        await adapter.getRecommendations({ trackIds: ["track1"] });
+        throw new Error("Expected RateLimitError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(RateLimitError);
+        expect((err as RateLimitError).retryAfter).toBe(30);
+      }
+    });
+
+    test("should handle network error", async () => {
+      // Given: Network failure occurs
+      const networkError = new Error("Network failure");
+
+      const recommendationsMock = mock(async () => {
+        throw networkError;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        recommendations: {
+          get: recommendationsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRecommendations is called and network error occurs
+      // Then: NetworkError is thrown
+      await expect(
+        adapter.getRecommendations({ trackIds: ["track1"] }),
+      ).rejects.toThrow(NetworkError);
+    });
+  });
+});
