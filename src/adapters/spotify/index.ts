@@ -1884,8 +1884,44 @@ export function createSpotifyUserAdapter(
         throw new NetworkError(String(error));
       }
     },
-    async addTracksToPlaylist() {
-      throw new Error("Not implemented");
+    /**
+     * Adds tracks to a playlist.
+     * @param playlistId - The Spotify playlist ID
+     * @param trackIds - Array of Spotify track IDs to add
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {RateLimitError} If rate limit is exceeded
+     * @throws {NetworkError} If network error occurs
+     */
+    async addTracksToPlaylist(
+      playlistId: string,
+      trackIds: string[],
+    ): Promise<void> {
+      // Convert track IDs to Spotify URIs
+      const uris = trackIds.map((id) => `spotify:track:${id}`);
+
+      try {
+        await sdk.playlists.addItemsToPlaylist(playlistId, uris);
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid or expired access token");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+
+        // Handle network errors (errors without status property)
+        if (error instanceof Error) {
+          throw new NetworkError(error.message, error);
+        }
+
+        // Handle non-Error objects
+        throw new NetworkError(String(error));
+      }
     },
     async removeTracksFromPlaylist() {
       throw new Error("Not implemented");
