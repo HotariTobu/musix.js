@@ -37,7 +37,7 @@
     { "id": "CH-033", "passes": true },
     { "id": "CH-034", "passes": true },
     { "id": "CH-035", "passes": true },
-    { "id": "CH-036", "passes": false },
+    { "id": "CH-036", "passes": true },
     { "id": "CH-037", "passes": false },
     { "id": "CH-038", "passes": false },
     { "id": "CH-039", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "Session ended 2025-12-21. 35/42 requirements passing. CH-035 (addTracksToPlaylist) implemented with 7 tests for AC-050. Converts track IDs to Spotify URIs, handles 401/429 errors. Reviewer suggestions for future: add empty array early return, max 100 track limit validation, 403/404 error handling. Next session should implement CH-036 (removeTracksFromPlaylist). Remaining: CH-036~037 (Playlist Management), CH-038~042 (Extended Playback Control). 7 requirements left."
+  "notes": "Session 2025-12-21. 36/42 requirements passing. CH-036 (removeTracksFromPlaylist) implemented with 10 tests for AC-051. Converts track IDs to Spotify URIs, handles empty array early return, 401/404/429 error handling, NetworkError. Next session should implement CH-037 (getPlaylistTracks). Remaining: CH-037 (Playlist Management), CH-038~042 (Extended Playback Control). 6 requirements left."
 }

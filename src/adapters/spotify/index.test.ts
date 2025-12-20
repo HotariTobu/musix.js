@@ -17045,3 +17045,489 @@ describe("addTracksToPlaylist", () => {
     });
   });
 });
+
+describe("removeTracksFromPlaylist", () => {
+  describe("AC-051: Remove Tracks from Playlist [CH-036]", () => {
+    test("should remove tracks from playlist when called with valid track IDs", async () => {
+      // Given: User is authenticated and can edit the playlist
+      const playlistId = "playlist-123";
+      const trackIds = ["track-1", "track-2"];
+      const removeItemsFromPlaylistMock = mock(
+        async (
+          playlistId: string,
+          body: { tracks: Array<{ uri: string }> },
+        ) => {
+          // Verify the correct parameters are passed
+          expect(playlistId).toBe("playlist-123");
+          // Track IDs should be converted to Spotify URIs
+          expect(body.tracks).toEqual([
+            { uri: "spotify:track:track-1" },
+            { uri: "spotify:track:track-2" },
+          ]);
+          return { snapshot_id: "snapshot-123" };
+        },
+      );
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        playlists: {
+          removeItemsFromPlaylist: removeItemsFromPlaylistMock,
+        },
+        logOut: mock(() => {}),
+      } as unknown as ReturnType<typeof SpotifyApi.withUserAuthorization>;
+
+      SpotifyApi.withUserAuthorization = mock(
+        () => mockSdk as ReturnType<typeof SpotifyApi.withUserAuthorization>,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public", "playlist-modify-private"],
+      });
+
+      // When: removeTracksFromPlaylist(playlistId, ["trackId1", "trackId2"]) is called
+      await adapter.removeTracksFromPlaylist(playlistId, trackIds);
+
+      // Then: Tracks are removed from the playlist
+      expect(removeItemsFromPlaylistMock).toHaveBeenCalledTimes(1);
+    });
+
+    test("should resolve without error when tracks are removed successfully", async () => {
+      // Given: User is authenticated and can edit the playlist
+      const playlistId = "playlist-456";
+      const trackIds = ["track-a"];
+      const removeItemsFromPlaylistMock = mock(async () => ({
+        snapshot_id: "snapshot-abc",
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-456",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-456",
+            },
+          })),
+        },
+        playlists: {
+          removeItemsFromPlaylist: removeItemsFromPlaylistMock,
+        },
+        logOut: mock(() => {}),
+      } as unknown as ReturnType<typeof SpotifyApi.withUserAuthorization>;
+
+      SpotifyApi.withUserAuthorization = mock(
+        () => mockSdk as ReturnType<typeof SpotifyApi.withUserAuthorization>,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: removeTracksFromPlaylist is called
+      const result = await adapter.removeTracksFromPlaylist(
+        playlistId,
+        trackIds,
+      );
+
+      // Then: Promise resolves without error and returns void
+      expect(result).toBeUndefined();
+      expect(removeItemsFromPlaylistMock).toHaveBeenCalled();
+    });
+
+    test("should handle removing a single track", async () => {
+      // Given: User is authenticated and can edit the playlist
+      const playlistId = "playlist-single";
+      const trackIds = ["single-track"];
+      const removeItemsFromPlaylistMock = mock(
+        async (
+          playlistId: string,
+          body: { tracks: Array<{ uri: string }> },
+        ) => {
+          expect(body.tracks).toEqual([{ uri: "spotify:track:single-track" }]);
+          return { snapshot_id: "snapshot-xyz" };
+        },
+      );
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-single",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-single",
+            },
+          })),
+        },
+        playlists: {
+          removeItemsFromPlaylist: removeItemsFromPlaylistMock,
+        },
+        logOut: mock(() => {}),
+      } as unknown as ReturnType<typeof SpotifyApi.withUserAuthorization>;
+
+      SpotifyApi.withUserAuthorization = mock(
+        () => mockSdk as ReturnType<typeof SpotifyApi.withUserAuthorization>,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: removeTracksFromPlaylist is called with single track
+      await adapter.removeTracksFromPlaylist(playlistId, trackIds);
+
+      // Then: Single track is removed from the playlist
+      expect(removeItemsFromPlaylistMock).toHaveBeenCalledTimes(1);
+    });
+
+    test("should return early without API call when given empty array", async () => {
+      // Given: User is authenticated and can edit the playlist
+      const playlistId = "playlist-empty";
+      const trackIds: string[] = [];
+      const removeItemsFromPlaylistMock = mock(async () => ({
+        snapshot_id: "snapshot-empty",
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-empty",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-empty",
+            },
+          })),
+        },
+        playlists: {
+          removeItemsFromPlaylist: removeItemsFromPlaylistMock,
+        },
+        logOut: mock(() => {}),
+      } as unknown as ReturnType<typeof SpotifyApi.withUserAuthorization>;
+
+      SpotifyApi.withUserAuthorization = mock(
+        () => mockSdk as ReturnType<typeof SpotifyApi.withUserAuthorization>,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: removeTracksFromPlaylist is called with empty array
+      await adapter.removeTracksFromPlaylist(playlistId, trackIds);
+
+      // Then: Returns without making API call
+      expect(removeItemsFromPlaylistMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Error Handling [CH-036]", () => {
+    test("should throw AuthenticationError when user is not authenticated (401)", async () => {
+      // Given: Invalid authentication
+      const removeItemsFromPlaylistMock = mock(async () => {
+        const error = new Error("Unauthorized") as Error & {
+          status: number;
+          headers: Record<string, string>;
+        };
+        error.status = 401;
+        error.headers = {};
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-401",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-401",
+            },
+          })),
+        },
+        playlists: {
+          removeItemsFromPlaylist: removeItemsFromPlaylistMock,
+        },
+        logOut: mock(() => {}),
+      } as unknown as ReturnType<typeof SpotifyApi.withUserAuthorization>;
+
+      SpotifyApi.withUserAuthorization = mock(
+        () => mockSdk as ReturnType<typeof SpotifyApi.withUserAuthorization>,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: removeTracksFromPlaylist is called with invalid auth
+      // Then: AuthenticationError is thrown
+      await expect(
+        adapter.removeTracksFromPlaylist("playlist-123", ["track-1"]),
+      ).rejects.toThrow(AuthenticationError);
+    });
+
+    test("should throw RateLimitError when rate limit is exceeded (429)", async () => {
+      // Given: Rate limit exceeded
+      const removeItemsFromPlaylistMock = mock(async () => {
+        const error = new Error("Rate limited") as Error & {
+          status: number;
+          headers: Record<string, string>;
+        };
+        error.status = 429;
+        error.headers = {
+          "retry-after": "30",
+        };
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-429",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-429",
+            },
+          })),
+        },
+        playlists: {
+          removeItemsFromPlaylist: removeItemsFromPlaylistMock,
+        },
+        logOut: mock(() => {}),
+      } as unknown as ReturnType<typeof SpotifyApi.withUserAuthorization>;
+
+      SpotifyApi.withUserAuthorization = mock(
+        () => mockSdk as ReturnType<typeof SpotifyApi.withUserAuthorization>,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: removeTracksFromPlaylist is called and rate limit is exceeded
+      // Then: RateLimitError is thrown with correct retryAfter
+      try {
+        await adapter.removeTracksFromPlaylist("playlist-123", ["track-1"]);
+        expect.unreachable("Should have thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(RateLimitError);
+        expect((error as RateLimitError).retryAfter).toBe(30);
+      }
+    });
+
+    test("should throw RateLimitError with default retryAfter when header is missing", async () => {
+      // Given: Rate limit exceeded without retry-after header
+      const removeItemsFromPlaylistMock = mock(async () => {
+        const error = new Error("Rate limited") as Error & {
+          status: number;
+          headers: Record<string, string>;
+        };
+        error.status = 429;
+        error.headers = {};
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-429-no-header",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-429-no-header",
+            },
+          })),
+        },
+        playlists: {
+          removeItemsFromPlaylist: removeItemsFromPlaylistMock,
+        },
+        logOut: mock(() => {}),
+      } as unknown as ReturnType<typeof SpotifyApi.withUserAuthorization>;
+
+      SpotifyApi.withUserAuthorization = mock(
+        () => mockSdk as ReturnType<typeof SpotifyApi.withUserAuthorization>,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: removeTracksFromPlaylist is called and rate limit is exceeded
+      // Then: RateLimitError is thrown with default retryAfter of 60
+      try {
+        await adapter.removeTracksFromPlaylist("playlist-123", ["track-1"]);
+        expect.unreachable("Should have thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(RateLimitError);
+        expect((error as RateLimitError).retryAfter).toBe(60);
+      }
+    });
+
+    test("should throw NotFoundError when playlist does not exist (404)", async () => {
+      // Given: Playlist does not exist
+      const removeItemsFromPlaylistMock = mock(async () => {
+        const error = new Error("Not found") as Error & {
+          status: number;
+          headers: Record<string, string>;
+        };
+        error.status = 404;
+        error.headers = {};
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-404",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-404",
+            },
+          })),
+        },
+        playlists: {
+          removeItemsFromPlaylist: removeItemsFromPlaylistMock,
+        },
+        logOut: mock(() => {}),
+      } as unknown as ReturnType<typeof SpotifyApi.withUserAuthorization>;
+
+      SpotifyApi.withUserAuthorization = mock(
+        () => mockSdk as ReturnType<typeof SpotifyApi.withUserAuthorization>,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: removeTracksFromPlaylist is called with non-existent playlist
+      // Then: NotFoundError is thrown
+      await expect(
+        adapter.removeTracksFromPlaylist("non-existent-playlist", ["track-1"]),
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    test("should throw NotFoundError with resourceType='playlist'", async () => {
+      // Given: Playlist does not exist
+      const removeItemsFromPlaylistMock = mock(async () => {
+        const error = new Error("Not found") as Error & {
+          status: number;
+          headers: Record<string, string>;
+        };
+        error.status = 404;
+        error.headers = {};
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-404-type",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-404-type",
+            },
+          })),
+        },
+        playlists: {
+          removeItemsFromPlaylist: removeItemsFromPlaylistMock,
+        },
+        logOut: mock(() => {}),
+      } as unknown as ReturnType<typeof SpotifyApi.withUserAuthorization>;
+
+      SpotifyApi.withUserAuthorization = mock(
+        () => mockSdk as ReturnType<typeof SpotifyApi.withUserAuthorization>,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: removeTracksFromPlaylist is called with non-existent playlist
+      try {
+        await adapter.removeTracksFromPlaylist("non-existent-playlist", [
+          "track-1",
+        ]);
+        expect.unreachable("Should have thrown");
+      } catch (error) {
+        // Then: NotFoundError is thrown with resourceType='playlist'
+        expect(error).toBeInstanceOf(NotFoundError);
+        if (error instanceof NotFoundError) {
+          expect(error.resourceType).toBe("playlist");
+        }
+      }
+    });
+
+    test("should throw NetworkError when network error occurs", async () => {
+      // Given: Network error
+      const removeItemsFromPlaylistMock = mock(async () => {
+        const error = new Error("Network error") as Error & { code: string };
+        error.code = "ECONNRESET";
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-network",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-network",
+            },
+          })),
+        },
+        playlists: {
+          removeItemsFromPlaylist: removeItemsFromPlaylistMock,
+        },
+        logOut: mock(() => {}),
+      } as unknown as ReturnType<typeof SpotifyApi.withUserAuthorization>;
+
+      SpotifyApi.withUserAuthorization = mock(
+        () => mockSdk as ReturnType<typeof SpotifyApi.withUserAuthorization>,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: removeTracksFromPlaylist is called and network error occurs
+      // Then: NetworkError is thrown
+      await expect(
+        adapter.removeTracksFromPlaylist("playlist-123", ["track-1"]),
+      ).rejects.toThrow(NetworkError);
+    });
+  });
+});
