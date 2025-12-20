@@ -1,0 +1,200 @@
+# Command Line Interface
+
+All CLI flags can also be set in the configuration file, which improves reusability and maintainability for complex projects. Conversely, any option can be overridden by CLI flags, even if not explicitly listed on this page.
+
+## CLI Flag Patterns
+
+The mapping between CLI flags and configuration options follows these rules:
+
+* `--foo` sets `foo: true`
+* `--no-foo` sets `foo: false`
+* `--foo.bar` sets `foo: { bar: true }`
+* `--format esm --format cjs` sets `format: ['esm', 'cjs']`
+
+This flexible pattern allows you to easily control and override configuration options directly from the command line.
+
+## Entry Files
+
+**`[...files]`**
+
+Specify entry files as command arguments. This is equivalent to setting the `entry` option in the configuration file. For example:
+
+```bash
+tsdown src/index.ts src/util.ts
+```
+
+This will bundle `src/index.ts` and `src/util.ts` as separate entry points.
+
+## Configuration
+
+**`-c, --config <filename>`**
+
+Specify a custom configuration file. Use this option to define the path to the configuration file you want to use.
+
+**`--config-loader <loader>`**
+
+Specifies which config loader to use (`auto`, `native`, or `unrun`).
+
+**`--no-config`**
+
+Disable loading a configuration file. This is useful if you want to rely solely on command-line options or default settings.
+
+**`--tsconfig <tsconfig>`**
+
+Specify the path or filename of your `tsconfig` file. `tsdown` will search upwards from the current directory to find the specified file. By default, it uses `tsconfig.json`.
+
+```bash
+tsdown --tsconfig tsconfig.build.json
+```
+
+**`--from-vite [vitest]`**
+
+Reuse configuration from Vite or Vitest. This allows you to extend or integrate with existing Vite or Vitest configurations seamlessly.
+
+## Output Options
+
+**`--format <format>`**
+
+Define the bundle format. Supported formats include:
+
+* `esm` (ECMAScript Modules)
+* `cjs` (CommonJS)
+* `iife` (Immediately Invoked Function Expression)
+* `umd` (Universal Module Definition)
+
+**`-d, --out-dir <dir>`**
+
+Specify the output directory for the bundled files. Use this option to customize where the output files are written.
+
+**`--clean`**
+
+Clean the output directory before building. This removes all files in the output directory to ensure a fresh build.
+
+## Code Transformation
+
+**`--target <target>`**
+
+Specify the JavaScript target version for the bundle. Examples include:
+
+* `es2015`
+* `esnext`
+* `chrome100`
+* `node18`
+
+You can also disable all syntax transformations by using `--no-target` or by setting the target to `false` in your configuration file.
+
+**`--platform <platform>`**
+
+Specify the target platform for the bundle. Supported platforms include:
+
+* `node` (Node.js)
+* `browser` (Web browsers)
+* `neutral` (Platform-agnostic)
+
+**`--minify`**
+
+Enable minification of the output bundle to reduce file size. Minification removes unnecessary characters and optimizes the code for production.
+
+**`--treeshake`, `--no-treeshake`**
+
+Enable or disable tree shaking. Tree shaking removes unused code from the final bundle, reducing its size and improving performance.
+
+## TypeScript & Type Definitions
+
+**`--dts`**
+
+Generate TypeScript declaration (`.d.ts`) files for the bundled code. This is useful for libraries that need to provide type definitions.
+
+## Dependencies
+
+**`--external <module>`**
+
+Mark a module as external. This prevents the specified module from being included in the bundle.
+
+**`--shims`**
+
+Enable CommonJS (CJS) and ECMAScript Module (ESM) shims. This ensures compatibility between different module systems.
+
+## Development
+
+**`-w, --watch [path]`**
+
+Enable watch mode to automatically rebuild your project when files change. Optionally, specify a path to watch for changes.
+
+**`--ignore-watch <path>`**
+
+Ignore custom paths in watch mode.
+
+**`--sourcemap`**
+
+Generate source maps for the bundled files. Source maps help with debugging by mapping the output code back to the original source files.
+
+**`--on-success <command>`**
+
+Specify a command to run after a successful build. This is especially useful in watch mode to trigger additional scripts or actions automatically after each build completes.
+
+```bash
+tsdown --on-success "echo Build finished!"
+```
+
+## Package & Publishing
+
+**`--exports`**
+
+Generate the `exports`, `main`, `module`, and `types` fields in your `package.json`.
+
+**`--publint`**
+
+Enable `publint` to validate your package for publishing. This checks for common issues in your package configuration, ensuring it meets best practices.
+
+**`--unused`**
+
+Enable unused dependencies checking. This helps identify dependencies in your project that are not being used, allowing you to clean up your `package.json`.
+
+## Assets & Files
+
+**`--copy <dir>`**
+
+Copies all files from the specified directory to the output directory. This is useful for including static assets such as images, stylesheets, or other resources in your build output.
+
+```bash
+tsdown --copy public
+```
+
+All contents of the `public` directory will be copied to your output directory (e.g., `dist`).
+
+**`--public-dir <dir>`**
+
+An alias for `--copy`. (Deprecated: Please use `--copy` instead)
+
+## Logging & Debugging
+
+**`--log-level <level>`**
+
+Set the log level to control the verbosity of logs during the build process.
+
+**`--silent`**
+
+(Deprecated: Please use `--log-level error` instead)
+
+Suppress non-error logs during the build process. Only error messages will be displayed, making it easier to focus on critical issues.
+
+**`--report`, `--no-report`**
+
+Enable or disable the generation of a build report. By default, the report is enabled and outputs the list of build artifacts along with their sizes to the console. This provides a quick overview of the build results, helping you analyze the output and identify potential optimizations.
+
+**`--debug-logs [feat]`**
+
+Show debug logs.
+
+## Environment Variables
+
+**`--env.* <value>`**
+
+Define compile-time environment variables, for example:
+
+```bash
+tsdown --env.NODE_ENV=production
+```
+
+Note that environment variables defined with `--env.VAR_NAME` can only be accessed as `import.meta.env.VAR_NAME` or `process.env.VAR_NAME`.
