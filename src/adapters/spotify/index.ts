@@ -24,6 +24,7 @@ import type {
   Album,
   Artist,
   Image,
+  PaginatedResult,
   Playlist,
   SearchOptions,
   SearchResult,
@@ -677,6 +678,53 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
         },
         "artist",
         ids.join(","),
+      );
+    },
+
+    /**
+     * Retrieves albums by an artist.
+     * @param artistId - The Spotify artist ID
+     * @param options - Optional pagination options (limit, offset)
+     * @returns Promise resolving to PaginatedResult containing albums
+     */
+    async getArtistAlbums(
+      artistId: string,
+      options?: SearchOptions,
+    ): Promise<PaginatedResult<Album>> {
+      // Apply default values and constraints
+      // Limit is capped at 50 (Spotify API max), cast to SDK's expected literal union type
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          // Call Spotify SDK to get artist's albums
+          // Signature: albums(id, includeGroups?, market?, limit?, offset?)
+          const response = await sdk.artists.albums(
+            artistId,
+            undefined, // includeGroups
+            undefined, // market
+            limit,
+            offset,
+          );
+
+          // Transform Spotify simplified albums to musix.js Album type
+          const albums = response.items.map(transformSimplifiedAlbum);
+
+          // Calculate hasNext based on whether there are more items
+          const hasNext = offset + response.items.length < response.total;
+
+          return {
+            items: albums,
+            total: response.total,
+            limit,
+            offset,
+            hasNext,
+          };
+        },
+        "artist",
+        artistId,
       );
     },
 

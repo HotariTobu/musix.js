@@ -78,6 +78,15 @@ export interface SearchResult<T> {
   offset: number;
 }
 
+/** Paginated result for list endpoints */
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasNext: boolean;
+}
+
 /** Spotify API configuration */
 export interface SpotifyConfig {
   clientId: string;
@@ -108,5 +117,9 @@ export interface SpotifyAdapter {
   getAlbums(ids: string[]): Promise<Album[]>;
   getArtist(id: string): Promise<Artist>;
   getArtists(ids: string[]): Promise<Artist[]>;
+  getArtistAlbums(
+    artistId: string,
+    options?: SearchOptions,
+  ): Promise<PaginatedResult<Album>>;
   getPlaylist(id: string): Promise<Playlist>;
 }

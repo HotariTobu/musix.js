@@ -6005,4 +6005,296 @@ describe("Token Auto Refresh [NFR-003]", () => {
       });
     });
   });
+
+  describe("getArtistAlbums", () => {
+    // Helper to create mock Spotify simplified album
+    const createMockAlbum = (overrides: Record<string, unknown> = {}) => ({
+      id: "album-id",
+      name: "Test Album",
+      artists: [
+        {
+          id: "artist-id",
+          name: "Test Artist",
+          external_urls: {
+            spotify: "https://open.spotify.com/artist/artist-id",
+          },
+        },
+      ],
+      release_date: "2024-01-15",
+      total_tracks: 12,
+      images: [
+        { url: "https://i.scdn.co/image/abc123", width: 640, height: 640 },
+      ],
+      external_urls: {
+        spotify: "https://open.spotify.com/album/album-id",
+      },
+      ...overrides,
+    });
+
+    // Helper to create mock paginated response
+    const createMockPaginatedResponse = (
+      total: number,
+      limit: number,
+      offset: number,
+      items: unknown[] = [],
+    ) => ({
+      items,
+      total,
+      limit,
+      offset,
+      href: `https://api.spotify.com/v1/artists/artist-id/albums?offset=${offset}&limit=${limit}`,
+      next: offset + limit < total ? "next-page-url" : null,
+      previous: offset > 0 ? "previous-page-url" : null,
+    });
+
+    // AC-011: Get Artist Albums
+    describe("AC-011: Get Artist Albums", () => {
+      test("should return PaginatedResult<Album> with items, total, limit, offset, hasNext", async () => {
+        // Given: Valid adapter with authentication
+        const mockAlbum = createMockAlbum();
+        const mockResponse = createMockPaginatedResponse(100, 20, 0, [
+          mockAlbum,
+        ]);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              artists: {
+                albums: mock(async () => mockResponse),
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getArtistAlbums is called with valid artist ID
+        const result = await adapter.getArtistAlbums("artist-id");
+
+        // Then: PaginatedResult<Album> is returned with all required properties
+        expect(result).toBeDefined();
+        expect(Array.isArray(result.items)).toBe(true);
+        expect(typeof result.total).toBe("number");
+        expect(typeof result.limit).toBe("number");
+        expect(typeof result.offset).toBe("number");
+        expect(typeof result.hasNext).toBe("boolean");
+      });
+
+      test("should return items as Album array", async () => {
+        // Given: Valid adapter with authentication
+        const mockAlbum1 = createMockAlbum({
+          id: "album1",
+          name: "Album 1",
+        });
+        const mockAlbum2 = createMockAlbum({
+          id: "album2",
+          name: "Album 2",
+        });
+        const mockResponse = createMockPaginatedResponse(2, 20, 0, [
+          mockAlbum1,
+          mockAlbum2,
+        ]);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              artists: {
+                albums: mock(async () => mockResponse),
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getArtistAlbums is called
+        const result = await adapter.getArtistAlbums("artist-id");
+
+        // Then: items array contains Album objects
+        expect(result.items.length).toBe(2);
+        expect(result.items[0].id).toBe("album1");
+        expect(result.items[0].name).toBe("Album 1");
+        expect(result.items[1].id).toBe("album2");
+        expect(result.items[0].externalUrl).toBeDefined();
+      });
+
+      test("should set hasNext to true when more items are available", async () => {
+        // Given: Total is greater than offset + items.length
+        const mockAlbum = createMockAlbum();
+        const mockResponse = createMockPaginatedResponse(100, 20, 0, [
+          mockAlbum,
+        ]);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              artists: {
+                albums: mock(async () => mockResponse),
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getArtistAlbums is called
+        const result = await adapter.getArtistAlbums("artist-id");
+
+        // Then: hasNext is true because 0 + 1 < 100
+        expect(result.hasNext).toBe(true);
+      });
+
+      test("should set hasNext to false when no more items are available", async () => {
+        // Given: Total equals offset + items.length
+        const mockAlbum = createMockAlbum();
+        const mockResponse = createMockPaginatedResponse(1, 20, 0, [mockAlbum]);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              artists: {
+                albums: mock(async () => mockResponse),
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getArtistAlbums is called
+        const result = await adapter.getArtistAlbums("artist-id");
+
+        // Then: hasNext is false because 0 + 1 >= 1
+        expect(result.hasNext).toBe(false);
+      });
+    });
+
+    // AC-012: Get Artist Albums - Pagination
+    describe("AC-012: Get Artist Albums - Pagination", () => {
+      test("should pass limit and offset to SDK", async () => {
+        // Given: Valid adapter with authentication
+        const mockResponse = createMockPaginatedResponse(100, 10, 20, []);
+        const albumsMock = mock(async () => mockResponse);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              artists: {
+                albums: albumsMock,
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getArtistAlbums is called with limit and offset
+        await adapter.getArtistAlbums("artist-id", { limit: 10, offset: 20 });
+
+        // Then: SDK is called with specified limit and offset
+        expect(albumsMock).toHaveBeenCalledWith(
+          "artist-id",
+          undefined,
+          undefined,
+          10,
+          20,
+        );
+      });
+
+      test("should use default limit of 20 when not specified", async () => {
+        // Given: Valid adapter with authentication
+        const mockResponse = createMockPaginatedResponse(100, 20, 0, []);
+        const albumsMock = mock(async () => mockResponse);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              artists: {
+                albums: albumsMock,
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getArtistAlbums is called without options
+        await adapter.getArtistAlbums("artist-id");
+
+        // Then: SDK is called with default limit of 20
+        expect(albumsMock).toHaveBeenCalledWith(
+          "artist-id",
+          undefined,
+          undefined,
+          20,
+          0,
+        );
+      });
+
+      test("should cap limit at 50", async () => {
+        // Given: Valid adapter with authentication
+        const mockResponse = createMockPaginatedResponse(100, 50, 0, []);
+        const albumsMock = mock(async () => mockResponse);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              artists: {
+                albums: albumsMock,
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getArtistAlbums is called with limit > 50
+        await adapter.getArtistAlbums("artist-id", { limit: 100 });
+
+        // Then: SDK is called with limit capped at 50
+        expect(albumsMock).toHaveBeenCalledWith(
+          "artist-id",
+          undefined,
+          undefined,
+          50,
+          0,
+        );
+      });
+    });
+  });
 });

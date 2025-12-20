@@ -5,6 +5,7 @@ import type {
   Album,
   Artist,
   Image,
+  PaginatedResult,
   Playlist,
   SearchOptions,
   SearchResult,
@@ -472,6 +473,12 @@ describe("Core Types", () => {
           throw new Error("Not implemented");
         },
         getArtists: async (ids: string[]) => {
+          throw new Error("Not implemented");
+        },
+        getArtistAlbums: async (
+          artistId: string,
+          options?: SearchOptions,
+        ): Promise<PaginatedResult<Album>> => {
           throw new Error("Not implemented");
         },
         getPlaylist: async (id: string) => {
