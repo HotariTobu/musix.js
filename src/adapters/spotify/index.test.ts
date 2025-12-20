@@ -13665,3 +13665,542 @@ describe("getNewReleases", () => {
     });
   });
 });
+
+// CH-030: Get Recently Played
+describe("getRecentlyPlayed", () => {
+  describe("AC-043: Get Recently Played [CH-030]", () => {
+    test("should return PaginatedResult<RecentlyPlayedItem> with play history when called without options", async () => {
+      // Given: Valid adapter with user authentication
+      const mockPlayedAt1 = "2025-12-21T10:30:00.000Z";
+      const mockPlayedAt2 = "2025-12-21T10:25:00.000Z";
+
+      const mockTrack1 = {
+        id: "track-1",
+        name: "Recently Played Track 1",
+        duration_ms: 210000,
+        preview_url: "https://p.scdn.co/mp3-preview/track1",
+        external_urls: {
+          spotify: "https://open.spotify.com/track/track-1",
+        },
+        artists: [
+          {
+            id: "artist-1",
+            name: "Artist One",
+            external_urls: {
+              spotify: "https://open.spotify.com/artist/artist-1",
+            },
+          },
+        ],
+        album: {
+          id: "album-1",
+          name: "Album One",
+          release_date: "2025-01-01",
+          total_tracks: 12,
+          images: [
+            { url: "https://i.scdn.co/image/album1", width: 640, height: 640 },
+          ],
+          external_urls: {
+            spotify: "https://open.spotify.com/album/album-1",
+          },
+          artists: [
+            {
+              id: "artist-1",
+              name: "Artist One",
+              external_urls: {
+                spotify: "https://open.spotify.com/artist/artist-1",
+              },
+            },
+          ],
+        },
+      };
+
+      const mockTrack2 = {
+        id: "track-2",
+        name: "Recently Played Track 2",
+        duration_ms: 180000,
+        preview_url: "https://p.scdn.co/mp3-preview/track2",
+        external_urls: {
+          spotify: "https://open.spotify.com/track/track-2",
+        },
+        artists: [
+          {
+            id: "artist-2",
+            name: "Artist Two",
+            external_urls: {
+              spotify: "https://open.spotify.com/artist/artist-2",
+            },
+          },
+        ],
+        album: {
+          id: "album-2",
+          name: "Album Two",
+          release_date: "2025-02-01",
+          total_tracks: 10,
+          images: [
+            { url: "https://i.scdn.co/image/album2", width: 640, height: 640 },
+          ],
+          external_urls: {
+            spotify: "https://open.spotify.com/album/album-2",
+          },
+          artists: [
+            {
+              id: "artist-2",
+              name: "Artist Two",
+              external_urls: {
+                spotify: "https://open.spotify.com/artist/artist-2",
+              },
+            },
+          ],
+        },
+      };
+
+      const getRecentlyPlayedMock = mock(async () => ({
+        items: [
+          { track: mockTrack1, played_at: mockPlayedAt1, context: null },
+          { track: mockTrack2, played_at: mockPlayedAt2, context: null },
+        ],
+        total: 50,
+        limit: 20,
+        next: "https://api.spotify.com/v1/me/player/recently-played?limit=20&before=12345",
+        cursors: {
+          after: "12345",
+          before: "67890",
+        },
+        href: "https://api.spotify.com/v1/me/player/recently-played",
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getRecentlyPlayedTracks: getRecentlyPlayedMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-recently-played"],
+      });
+
+      // When: getRecentlyPlayed() is called
+      const result = await adapter.getRecentlyPlayed();
+
+      // Then: Returns PaginatedResult<RecentlyPlayedItem> with play history
+      expect(result).toBeObject();
+      expect(result.items).toBeArray();
+      expect(result.items).toHaveLength(2);
+      expect(result.total).toBe(50);
+      expect(result.limit).toBe(20);
+      expect(result.offset).toBe(0);
+      expect(result.hasNext).toBe(true); // 0 + 2 < 50
+
+      // Verify RecentlyPlayedItem structure - each item includes track and playedAt
+      expect(result.items[0].track).toBeDefined();
+      expect(result.items[0].track.id).toBe("track-1");
+      expect(result.items[0].track.name).toBe("Recently Played Track 1");
+      expect(result.items[0].playedAt).toBe(mockPlayedAt1);
+
+      expect(result.items[1].track).toBeDefined();
+      expect(result.items[1].track.id).toBe("track-2");
+      expect(result.items[1].track.name).toBe("Recently Played Track 2");
+      expect(result.items[1].playedAt).toBe(mockPlayedAt2);
+
+      // Verify SDK was called
+      expect(getRecentlyPlayedMock).toHaveBeenCalledTimes(1);
+    });
+
+    test("should return empty items array when no recently played tracks", async () => {
+      // Given: Valid adapter with authentication, no recently played tracks
+      const getRecentlyPlayedMock = mock(async () => ({
+        items: [],
+        total: 0,
+        limit: 20,
+        next: null,
+        cursors: null,
+        href: "https://api.spotify.com/v1/me/player/recently-played",
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getRecentlyPlayedTracks: getRecentlyPlayedMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-recently-played"],
+      });
+
+      // When: getRecentlyPlayed() is called
+      const result = await adapter.getRecentlyPlayed();
+
+      // Then: Returns empty PaginatedResult
+      expect(result.items).toBeArray();
+      expect(result.items).toHaveLength(0);
+      expect(result.total).toBe(0);
+      expect(result.hasNext).toBe(false);
+    });
+
+    test("should correctly pass limit option to SDK", async () => {
+      // Given: Valid adapter with authentication
+      const mockItems = Array.from({ length: 10 }, (_, i) => ({
+        track: {
+          id: `track-${i}`,
+          name: `Track ${i}`,
+          duration_ms: 200000,
+          preview_url: null,
+          external_urls: {
+            spotify: `https://open.spotify.com/track/track-${i}`,
+          },
+          artists: [
+            {
+              id: "artist-1",
+              name: "Artist",
+              external_urls: {
+                spotify: "https://open.spotify.com/artist/artist-1",
+              },
+            },
+          ],
+          album: {
+            id: "album-1",
+            name: "Album",
+            release_date: "2025-01-01",
+            total_tracks: 10,
+            images: [],
+            external_urls: {
+              spotify: "https://open.spotify.com/album/album-1",
+            },
+            artists: [
+              {
+                id: "artist-1",
+                name: "Artist",
+                external_urls: {
+                  spotify: "https://open.spotify.com/artist/artist-1",
+                },
+              },
+            ],
+          },
+        },
+        played_at: `2025-12-21T10:${30 - i}:00.000Z`,
+        context: null,
+      }));
+
+      const getRecentlyPlayedMock = mock(async (limit?: number) => ({
+        items: mockItems.slice(0, limit ?? 20),
+        total: 100,
+        limit: limit ?? 20,
+        next: "https://api.spotify.com/v1/me/player/recently-played?limit=10&before=12345",
+        cursors: {
+          after: "12345",
+          before: "67890",
+        },
+        href: "https://api.spotify.com/v1/me/player/recently-played",
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getRecentlyPlayedTracks: getRecentlyPlayedMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-recently-played"],
+      });
+
+      // When: getRecentlyPlayed({ limit: 10 }) is called
+      const result = await adapter.getRecentlyPlayed({ limit: 10 });
+
+      // Then: Returns 10 items
+      expect(result.items).toHaveLength(10);
+      expect(result.limit).toBe(10);
+      expect(getRecentlyPlayedMock).toHaveBeenCalled();
+    });
+
+    test("should handle hasNext correctly when at last page", async () => {
+      // Given: Valid adapter with authentication, at last page
+      const mockItems = [
+        {
+          track: {
+            id: "track-1",
+            name: "Track 1",
+            duration_ms: 200000,
+            preview_url: null,
+            external_urls: {
+              spotify: "https://open.spotify.com/track/track-1",
+            },
+            artists: [
+              {
+                id: "artist-1",
+                name: "Artist",
+                external_urls: {
+                  spotify: "https://open.spotify.com/artist/artist-1",
+                },
+              },
+            ],
+            album: {
+              id: "album-1",
+              name: "Album",
+              release_date: "2025-01-01",
+              total_tracks: 10,
+              images: [],
+              external_urls: {
+                spotify: "https://open.spotify.com/album/album-1",
+              },
+              artists: [
+                {
+                  id: "artist-1",
+                  name: "Artist",
+                  external_urls: {
+                    spotify: "https://open.spotify.com/artist/artist-1",
+                  },
+                },
+              ],
+            },
+          },
+          played_at: "2025-12-21T10:30:00.000Z",
+          context: null,
+        },
+      ];
+
+      const getRecentlyPlayedMock = mock(async () => ({
+        items: mockItems,
+        total: 1,
+        limit: 20,
+        next: null,
+        cursors: null,
+        href: "https://api.spotify.com/v1/me/player/recently-played",
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getRecentlyPlayedTracks: getRecentlyPlayedMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-recently-played"],
+      });
+
+      // When: getRecentlyPlayed() is called at the last page
+      const result = await adapter.getRecentlyPlayed();
+
+      // Then: hasNext should be false
+      expect(result.hasNext).toBe(false);
+    });
+
+    test("should throw AuthenticationError when authentication fails", async () => {
+      // Given: Invalid authentication
+      const getRecentlyPlayedMock = mock(async () => {
+        const error = new Error("Unauthorized") as Error & { status: number };
+        error.status = 401;
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getRecentlyPlayedTracks: getRecentlyPlayedMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-recently-played"],
+      });
+
+      // When: getRecentlyPlayed is called without valid authentication
+      // Then: AuthenticationError is thrown
+      await expect(adapter.getRecentlyPlayed()).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should throw RateLimitError when rate limit is exceeded", async () => {
+      // Given: Rate limit exceeded response
+      const getRecentlyPlayedMock = mock(async () => {
+        const error = new Error("Rate limit exceeded") as Error & {
+          status: number;
+          headers: Record<string, string>;
+        };
+        error.status = 429;
+        error.headers = { "retry-after": "30" };
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getRecentlyPlayedTracks: getRecentlyPlayedMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-recently-played"],
+      });
+
+      // When: getRecentlyPlayed is called and rate limit is exceeded
+      // Then: RateLimitError is thrown with correct retryAfter value
+      try {
+        await adapter.getRecentlyPlayed();
+        expect.unreachable("Should have thrown RateLimitError");
+      } catch (error) {
+        expect(error).toBeInstanceOf(RateLimitError);
+        expect((error as RateLimitError).retryAfter).toBe(30);
+      }
+    });
+
+    test("should throw NetworkError when network error occurs", async () => {
+      // Given: Network error
+      const getRecentlyPlayedMock = mock(async () => {
+        throw new Error("Network error: connection refused");
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getRecentlyPlayedTracks: getRecentlyPlayedMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-recently-played"],
+      });
+
+      // When: getRecentlyPlayed is called and network error occurs
+      // Then: NetworkError is thrown
+      await expect(adapter.getRecentlyPlayed()).rejects.toThrow(NetworkError);
+    });
+  });
+});

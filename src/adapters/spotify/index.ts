@@ -35,6 +35,7 @@ import type {
   PlayOptions,
   PlaybackState,
   Playlist,
+  RecentlyPlayedItem,
   RecommendationOptions,
   RecommendationSeeds,
   SearchOptions,
@@ -1605,8 +1606,67 @@ export function createSpotifyUserAdapter(
         throw new NetworkError(String(error));
       }
     },
-    async getRecentlyPlayed() {
-      throw new Error("Not implemented");
+    /**
+     * Gets the user's recently played tracks.
+     * @param options - Optional pagination options (limit)
+     * @returns PaginatedResult containing recently played items with track and playedAt
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {RateLimitError} If rate limit is exceeded
+     * @throws {NetworkError} If network error occurs
+     */
+    async getRecentlyPlayed(
+      options?: SearchOptions,
+    ): Promise<PaginatedResult<RecentlyPlayedItem>> {
+      // Apply default values and constraints
+      // Limit is capped at 50 (Spotify API max), cast to SDK's expected literal union type
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      try {
+        // Call Spotify SDK to get recently played tracks
+        // Note: Spotify's recently played API uses cursor-based pagination
+        // but we expose it as offset-based for consistency
+        const response = await sdk.player.getRecentlyPlayedTracks(limit);
+
+        // Transform Spotify play history items to musix.js RecentlyPlayedItem type
+        const items: RecentlyPlayedItem[] = response.items.map((item) => ({
+          track: transformTrack(item.track as SpotifyTrack),
+          playedAt: item.played_at,
+        }));
+
+        // Calculate hasNext based on whether there are more items
+        // Use total from response if available, otherwise estimate based on next cursor
+        const total = response.total ?? (response.next ? 50 : items.length);
+        const hasNext = offset + items.length < total;
+
+        return {
+          items,
+          total,
+          limit,
+          offset,
+          hasNext,
+        };
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid or expired access token");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+
+        // Handle network errors (errors without status property)
+        if (error instanceof Error) {
+          throw new NetworkError(error.message, error);
+        }
+
+        // Handle non-Error objects
+        throw new NetworkError(String(error));
+      }
     },
     async getTopTracks() {
       throw new Error("Not implemented");
