@@ -16,6 +16,10 @@ This SDK enables JavaScript and TypeScript developers to interact with Spotify's
 
 ## API Methods
 
+- [Current User API](api/current-user.md): User profile, top items, library, playlists, and followed artists
+- [Player API](api/player.md): Playback control, devices, queue, and recently played
+- [Browse API](api/browse.md): New releases, featured playlists, and categories
+- [Recommendations API](api/recommendations.md): Track recommendations based on seeds and audio features
 - [Tracks API](api/tracks.md): Get track information and audio features
 - [Albums API](api/albums.md): Retrieve album details and tracks
 - [Artists API](api/artists.md): Access artist information and related artists
