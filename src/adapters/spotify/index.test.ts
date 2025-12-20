@@ -11089,4 +11089,446 @@ describe("createSpotifyUserAdapter", () => {
       ).rejects.toThrow();
     });
   });
+
+  describe("AC-036: Get Followed Artists [CH-025]", () => {
+    test("should return followed artists", async () => {
+      // Given: User is authenticated
+      const mockArtists = [
+        {
+          id: "artist-1",
+          name: "Artist One",
+          genres: ["rock", "alternative"],
+          images: [
+            { url: "https://example.com/img1.jpg", width: 640, height: 640 },
+          ],
+          external_urls: {
+            spotify: "https://open.spotify.com/artist/artist-1",
+          },
+        },
+        {
+          id: "artist-2",
+          name: "Artist Two",
+          genres: ["pop"],
+          images: [
+            { url: "https://example.com/img2.jpg", width: 300, height: 300 },
+          ],
+          external_urls: {
+            spotify: "https://open.spotify.com/artist/artist-2",
+          },
+        },
+      ];
+
+      const followedArtistsMock = mock(async () => ({
+        artists: {
+          items: mockArtists,
+          total: 25,
+          limit: 20,
+          offset: 0,
+          next: "https://api.spotify.com/v1/me/following?type=artist&after=artist-2&limit=20",
+          previous: null,
+          href: "https://api.spotify.com/v1/me/following?type=artist",
+        },
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          followedArtists: followedArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-follow-read"],
+      });
+
+      // When: getFollowedArtists() is called
+      const result = await adapter.getFollowedArtists();
+
+      // Then: Returns PaginatedResult<Artist> with followed artists
+      expect(result).toBeObject();
+      expect(result.items).toBeArray();
+      expect(result.items).toHaveLength(2);
+      expect(result.total).toBe(25);
+      expect(result.limit).toBe(20);
+      expect(result.offset).toBe(0);
+      expect(result.hasNext).toBe(true);
+
+      // Verify artist structure
+      expect(result.items[0].id).toBe("artist-1");
+      expect(result.items[0].name).toBe("Artist One");
+      expect(result.items[0].genres).toEqual(["rock", "alternative"]);
+      expect(result.items[0].externalUrl).toBe(
+        "https://open.spotify.com/artist/artist-1",
+      );
+
+      expect(result.items[1].id).toBe("artist-2");
+      expect(result.items[1].name).toBe("Artist Two");
+    });
+
+    test("should handle pagination with limit option", async () => {
+      // Given: User is authenticated
+      const mockArtists = [
+        {
+          id: "artist-5",
+          name: "Artist Five",
+          genres: [],
+          images: [],
+          external_urls: {
+            spotify: "https://open.spotify.com/artist/artist-5",
+          },
+        },
+      ];
+
+      const followedArtistsMock = mock(async () => ({
+        artists: {
+          items: mockArtists,
+          total: 50,
+          limit: 10,
+          offset: 0,
+          next: "https://api.spotify.com/v1/me/following?type=artist&after=artist-5&limit=10",
+          previous: null,
+          href: "https://api.spotify.com/v1/me/following?type=artist",
+        },
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          followedArtists: followedArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-follow-read"],
+      });
+
+      // When: getFollowedArtists({ limit: 10 }) is called
+      const result = await adapter.getFollowedArtists({ limit: 10 });
+
+      // Then: Returns results with limit 10
+      expect(result.limit).toBe(10);
+      expect(result.total).toBe(50);
+      expect(result.hasNext).toBe(true);
+      expect(followedArtistsMock).toHaveBeenCalled();
+    });
+
+    test("should return hasNext=true when more artists are available", async () => {
+      // Given: User is authenticated and has more artists to load
+      const mockArtists = [
+        {
+          id: "artist-1",
+          name: "Artist One",
+          genres: [],
+          images: [],
+          external_urls: {
+            spotify: "https://open.spotify.com/artist/artist-1",
+          },
+        },
+      ];
+
+      const followedArtistsMock = mock(async () => ({
+        artists: {
+          items: mockArtists,
+          total: 100,
+          limit: 20,
+          offset: 40,
+          next: "https://api.spotify.com/v1/me/following?type=artist&after=artist-1&limit=20",
+          previous: null,
+          href: "https://api.spotify.com/v1/me/following?type=artist",
+        },
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          followedArtists: followedArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-follow-read"],
+      });
+
+      // When: getFollowedArtists() is called
+      const result = await adapter.getFollowedArtists({
+        limit: 20,
+        offset: 40,
+      });
+
+      // Then: hasNext is true because offset (40) + items.length (1) = 41 < total (100)
+      expect(result.hasNext).toBe(true);
+      expect(result.offset).toBe(40);
+      expect(result.total).toBe(100);
+    });
+
+    test("should return hasNext=false when at the end", async () => {
+      // Given: User is authenticated and at the last page
+      const mockArtists = [
+        {
+          id: "artist-last",
+          name: "Last Artist",
+          genres: [],
+          images: [],
+          external_urls: {
+            spotify: "https://open.spotify.com/artist/artist-last",
+          },
+        },
+      ];
+
+      const followedArtistsMock = mock(async () => ({
+        artists: {
+          items: mockArtists,
+          total: 50,
+          limit: 20,
+          offset: 49,
+          next: null,
+          previous:
+            "https://api.spotify.com/v1/me/following?type=artist&before=artist-last&limit=20",
+          href: "https://api.spotify.com/v1/me/following?type=artist",
+        },
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          followedArtists: followedArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-follow-read"],
+      });
+
+      // When: getFollowedArtists() is called at the last page
+      const result = await adapter.getFollowedArtists({
+        limit: 20,
+        offset: 49,
+      });
+
+      // Then: hasNext is false because offset (49) + items.length (1) = 50 >= total (50)
+      expect(result.hasNext).toBe(false);
+      expect(result.offset).toBe(49);
+      expect(result.total).toBe(50);
+    });
+
+    test("should return empty result when no followed artists", async () => {
+      // Given: User is authenticated but follows no artists
+      const followedArtistsMock = mock(async () => ({
+        artists: {
+          items: [],
+          total: 0,
+          limit: 20,
+          offset: 0,
+          next: null,
+          previous: null,
+          href: "https://api.spotify.com/v1/me/following?type=artist",
+        },
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          followedArtists: followedArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-follow-read"],
+      });
+
+      // When: getFollowedArtists() is called
+      const result = await adapter.getFollowedArtists();
+
+      // Then: Returns empty PaginatedResult
+      expect(result.items).toBeArray();
+      expect(result.items).toHaveLength(0);
+      expect(result.total).toBe(0);
+      expect(result.hasNext).toBe(false);
+    });
+
+    test("should handle authentication error", async () => {
+      // Given: User is not authenticated (401 Unauthorized)
+      const error = new Error("Unauthorized") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 401;
+      error.headers = {};
+
+      const followedArtistsMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          followedArtists: followedArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-follow-read"],
+      });
+
+      // When: getFollowedArtists is called without authentication
+      // Then: AuthenticationError is thrown
+      await expect(adapter.getFollowedArtists()).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should handle rate limit error", async () => {
+      // Given: Rate limit is exceeded (429 Too Many Requests)
+      const error = new Error("Too Many Requests") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 429;
+      error.headers = { "retry-after": "15" };
+
+      const followedArtistsMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          followedArtists: followedArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-follow-read"],
+      });
+
+      // When: getFollowedArtists is called and rate limit is exceeded
+      // Then: RateLimitError is thrown with retryAfter value
+      try {
+        await adapter.getFollowedArtists();
+        throw new Error("Expected RateLimitError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(RateLimitError);
+        expect((err as RateLimitError).retryAfter).toBe(15);
+      }
+    });
+  });
 });
