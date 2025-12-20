@@ -11,6 +11,7 @@ import type {
   SimplifiedAlbum as SpotifySimplifiedAlbum,
   SimplifiedArtist as SpotifySimplifiedArtist,
   SimplifiedPlaylist as SpotifySimplifiedPlaylist,
+  SimplifiedTrack as SpotifySimplifiedTrack,
   Track as SpotifyTrack,
 } from "@spotify/web-api-ts-sdk";
 import {
@@ -176,6 +177,27 @@ function transformTrack(track: SpotifyTrack): Track {
     name: track.name,
     artists: track.artists.map(transformSimplifiedArtist),
     album: transformSimplifiedAlbum(track.album),
+    durationMs: track.duration_ms,
+    previewUrl: track.preview_url,
+    externalUrl: track.external_urls.spotify,
+  };
+}
+
+/**
+ * Transforms a Spotify SDK SimplifiedTrack to musix.js Track using album info.
+ * @param track - Spotify SDK SimplifiedTrack (from album tracks endpoint)
+ * @param album - musix.js Album object to attach to the track
+ * @returns musix.js Track
+ */
+function transformSimplifiedTrackWithAlbum(
+  track: SpotifySimplifiedTrack,
+  album: Album,
+): Track {
+  return {
+    id: track.id,
+    name: track.name,
+    artists: track.artists.map(transformSimplifiedArtist),
+    album,
     durationMs: track.duration_ms,
     previewUrl: track.preview_url,
     externalUrl: track.external_urls.spotify,
@@ -754,6 +776,55 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
         },
         "artist",
         artistId,
+      );
+    },
+
+    /**
+     * Retrieves tracks from an album.
+     * @param albumId - The Spotify album ID
+     * @param options - Optional pagination options (limit, offset)
+     * @returns Promise resolving to PaginatedResult containing tracks
+     */
+    async getAlbumTracks(
+      albumId: string,
+      options?: SearchOptions,
+    ): Promise<PaginatedResult<Track>> {
+      // Apply default values and constraints
+      // Limit is capped at 50 (Spotify API max), cast to SDK's expected literal union type
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          // Fetch album info and tracks in parallel
+          const [albumResponse, tracksResponse] = await Promise.all([
+            sdk.albums.get(albumId),
+            sdk.albums.tracks(albumId, undefined, limit, offset),
+          ]);
+
+          // Transform album to musix.js format
+          const album = transformAlbum(albumResponse);
+
+          // Transform simplified tracks to full tracks with album info
+          const tracks = tracksResponse.items.map((track) =>
+            transformSimplifiedTrackWithAlbum(track, album),
+          );
+
+          // Calculate hasNext based on whether there are more items
+          const hasNext =
+            offset + tracksResponse.items.length < tracksResponse.total;
+
+          return {
+            items: tracks,
+            total: tracksResponse.total,
+            limit,
+            offset,
+            hasNext,
+          };
+        },
+        "album",
+        albumId,
       );
     },
 
