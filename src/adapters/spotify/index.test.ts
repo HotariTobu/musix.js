@@ -13048,3 +13048,620 @@ describe("getRelatedArtists", () => {
     });
   });
 });
+
+// CH-029: Get New Releases
+describe("getNewReleases", () => {
+  describe("AC-042: Get New Releases [CH-029]", () => {
+    test("should return PaginatedResult<Album> with new album releases when called without options", async () => {
+      // Given: Valid adapter with authentication
+      const mockAlbum1 = {
+        id: "new-album-1",
+        name: "New Release 1",
+        release_date: "2025-12-20",
+        total_tracks: 12,
+        external_urls: {
+          spotify: "https://open.spotify.com/album/new-album-1",
+        },
+        artists: [
+          {
+            id: "artist-1",
+            name: "Artist One",
+            external_urls: {
+              spotify: "https://open.spotify.com/artist/artist-1",
+            },
+          },
+        ],
+        images: [
+          { url: "https://i.scdn.co/image/new1", width: 640, height: 640 },
+        ],
+      };
+
+      const mockAlbum2 = {
+        id: "new-album-2",
+        name: "New Release 2",
+        release_date: "2025-12-19",
+        total_tracks: 10,
+        external_urls: {
+          spotify: "https://open.spotify.com/album/new-album-2",
+        },
+        artists: [
+          {
+            id: "artist-2",
+            name: "Artist Two",
+            external_urls: {
+              spotify: "https://open.spotify.com/artist/artist-2",
+            },
+          },
+        ],
+        images: [
+          { url: "https://i.scdn.co/image/new2", width: 640, height: 640 },
+        ],
+      };
+
+      const getNewReleasesMock = mock(async () => ({
+        albums: {
+          items: [mockAlbum1, mockAlbum2],
+          total: 50,
+          limit: 20,
+          offset: 0,
+          next: "https://api.spotify.com/v1/browse/new-releases?offset=20",
+          previous: null,
+          href: "https://api.spotify.com/v1/browse/new-releases",
+        },
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        browse: {
+          getNewReleases: getNewReleasesMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getNewReleases() is called
+      const result = await adapter.getNewReleases();
+
+      // Then: Returns PaginatedResult<Album> with new album releases
+      expect(result).toBeObject();
+      expect(result.items).toBeArray();
+      expect(result.items).toHaveLength(2);
+      expect(result.total).toBe(50);
+      expect(result.limit).toBe(20);
+      expect(result.offset).toBe(0);
+      expect(result.hasNext).toBe(true); // 0 + 2 < 50
+
+      // Verify album structure
+      expect(result.items[0].id).toBe("new-album-1");
+      expect(result.items[0].name).toBe("New Release 1");
+      expect(result.items[0].releaseDate).toBe("2025-12-20");
+      expect(result.items[0].totalTracks).toBe(12);
+      expect(result.items[0].externalUrl).toBe(
+        "https://open.spotify.com/album/new-album-1",
+      );
+
+      expect(result.items[1].id).toBe("new-album-2");
+      expect(result.items[1].name).toBe("New Release 2");
+
+      // Verify SDK was called
+      expect(getNewReleasesMock).toHaveBeenCalledTimes(1);
+    });
+
+    test("should return empty items array when no new releases available", async () => {
+      // Given: Valid adapter with authentication, no new releases
+      const getNewReleasesMock = mock(async () => ({
+        albums: {
+          items: [],
+          total: 0,
+          limit: 20,
+          offset: 0,
+          next: null,
+          previous: null,
+          href: "https://api.spotify.com/v1/browse/new-releases",
+        },
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        browse: {
+          getNewReleases: getNewReleasesMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getNewReleases() is called
+      const result = await adapter.getNewReleases();
+
+      // Then: Returns empty PaginatedResult
+      expect(result.items).toBeArray();
+      expect(result.items).toHaveLength(0);
+      expect(result.total).toBe(0);
+      expect(result.hasNext).toBe(false);
+    });
+
+    test("should correctly pass limit option to SDK", async () => {
+      // Given: Valid adapter with authentication
+      const mockAlbums = Array.from({ length: 10 }, (_, i) => ({
+        id: `album-${i}`,
+        name: `Album ${i}`,
+        release_date: "2025-12-20",
+        total_tracks: 10,
+        external_urls: {
+          spotify: `https://open.spotify.com/album/album-${i}`,
+        },
+        artists: [
+          {
+            id: "artist-1",
+            name: "Artist",
+            external_urls: {
+              spotify: "https://open.spotify.com/artist/artist-1",
+            },
+          },
+        ],
+        images: [],
+      }));
+
+      const getNewReleasesMock = mock(
+        async (country?: string, limit?: number, offset?: number) => ({
+          albums: {
+            items: mockAlbums,
+            total: 100,
+            limit: limit || 20,
+            offset: offset || 0,
+            next: "https://api.spotify.com/v1/browse/new-releases?offset=10",
+            previous: null,
+            href: "https://api.spotify.com/v1/browse/new-releases",
+          },
+        }),
+      );
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        browse: {
+          getNewReleases: getNewReleasesMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getNewReleases({ limit: 10 }) is called
+      const result = await adapter.getNewReleases({ limit: 10 });
+
+      // Then: Returns results with limit 10
+      expect(result.limit).toBe(10);
+      expect(result.items).toHaveLength(10);
+      expect(result.total).toBe(100);
+      expect(getNewReleasesMock).toHaveBeenCalled();
+    });
+
+    test("should correctly pass offset option to SDK", async () => {
+      // Given: Valid adapter with authentication
+      const mockAlbums = Array.from({ length: 5 }, (_, i) => ({
+        id: `album-${i + 20}`,
+        name: `Album ${i + 20}`,
+        release_date: "2025-12-20",
+        total_tracks: 10,
+        external_urls: {
+          spotify: `https://open.spotify.com/album/album-${i + 20}`,
+        },
+        artists: [
+          {
+            id: "artist-1",
+            name: "Artist",
+            external_urls: {
+              spotify: "https://open.spotify.com/artist/artist-1",
+            },
+          },
+        ],
+        images: [],
+      }));
+
+      const getNewReleasesMock = mock(
+        async (country?: string, limit?: number, offset?: number) => ({
+          albums: {
+            items: mockAlbums,
+            total: 100,
+            limit: limit || 20,
+            offset: offset || 0,
+            next: "https://api.spotify.com/v1/browse/new-releases?offset=40",
+            previous: "https://api.spotify.com/v1/browse/new-releases?offset=0",
+            href: "https://api.spotify.com/v1/browse/new-releases",
+          },
+        }),
+      );
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        browse: {
+          getNewReleases: getNewReleasesMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getNewReleases({ offset: 20 }) is called
+      const result = await adapter.getNewReleases({ offset: 20 });
+
+      // Then: Returns results starting from offset 20
+      expect(result.offset).toBe(20);
+      expect(result.items).toHaveLength(5);
+      expect(getNewReleasesMock).toHaveBeenCalled();
+    });
+
+    test("should return hasNext=true when more releases are available", async () => {
+      // Given: Valid adapter with authentication, more releases available
+      const mockAlbums = Array.from({ length: 20 }, (_, i) => ({
+        id: `album-${i}`,
+        name: `Album ${i}`,
+        release_date: "2025-12-20",
+        total_tracks: 10,
+        external_urls: {
+          spotify: `https://open.spotify.com/album/album-${i}`,
+        },
+        artists: [
+          {
+            id: "artist-1",
+            name: "Artist",
+            external_urls: {
+              spotify: "https://open.spotify.com/artist/artist-1",
+            },
+          },
+        ],
+        images: [],
+      }));
+
+      const getNewReleasesMock = mock(async () => ({
+        albums: {
+          items: mockAlbums,
+          total: 100,
+          limit: 20,
+          offset: 40,
+          next: "https://api.spotify.com/v1/browse/new-releases?offset=60",
+          previous: "https://api.spotify.com/v1/browse/new-releases?offset=20",
+          href: "https://api.spotify.com/v1/browse/new-releases",
+        },
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        browse: {
+          getNewReleases: getNewReleasesMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getNewReleases() is called
+      const result = await adapter.getNewReleases({
+        limit: 20,
+        offset: 40,
+      });
+
+      // Then: hasNext is true because offset (40) + items.length (20) = 60 < total (100)
+      expect(result.hasNext).toBe(true);
+      expect(result.offset).toBe(40);
+      expect(result.total).toBe(100);
+    });
+
+    test("should return hasNext=false when at the end", async () => {
+      // Given: Valid adapter with authentication, at the last page
+      const mockAlbums = Array.from({ length: 10 }, (_, i) => ({
+        id: `album-${i + 90}`,
+        name: `Album ${i + 90}`,
+        release_date: "2025-12-20",
+        total_tracks: 10,
+        external_urls: {
+          spotify: `https://open.spotify.com/album/album-${i + 90}`,
+        },
+        artists: [
+          {
+            id: "artist-1",
+            name: "Artist",
+            external_urls: {
+              spotify: "https://open.spotify.com/artist/artist-1",
+            },
+          },
+        ],
+        images: [],
+      }));
+
+      const getNewReleasesMock = mock(async () => ({
+        albums: {
+          items: mockAlbums,
+          total: 100,
+          limit: 20,
+          offset: 90,
+          next: null,
+          previous: "https://api.spotify.com/v1/browse/new-releases?offset=70",
+          href: "https://api.spotify.com/v1/browse/new-releases",
+        },
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        browse: {
+          getNewReleases: getNewReleasesMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getNewReleases() is called at the last page
+      const result = await adapter.getNewReleases({
+        limit: 20,
+        offset: 90,
+      });
+
+      // Then: hasNext is false because offset (90) + items.length (10) = 100 >= total (100)
+      expect(result.hasNext).toBe(false);
+      expect(result.offset).toBe(90);
+      expect(result.total).toBe(100);
+    });
+
+    test("should throw AuthenticationError when not authenticated", async () => {
+      // Given: Adapter with invalid/expired authentication
+      const getNewReleasesMock = mock(async () => {
+        const error = new Error("Unauthorized") as Error & { status: number };
+        error.status = 401;
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        browse: {
+          getNewReleases: getNewReleasesMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getNewReleases is called without valid authentication
+      // Then: AuthenticationError is thrown
+      await expect(adapter.getNewReleases()).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should throw RateLimitError when rate limit is exceeded", async () => {
+      // Given: Rate limit exceeded
+      const getNewReleasesMock = mock(async () => {
+        const error = new Error("Rate limit exceeded") as Error & {
+          status: number;
+          headers?: Record<string, string>;
+        };
+        error.status = 429;
+        error.headers = { "retry-after": "30" };
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        browse: {
+          getNewReleases: getNewReleasesMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getNewReleases is called and rate limit is exceeded
+      // Then: RateLimitError is thrown with retryAfter value
+      try {
+        await adapter.getNewReleases();
+        throw new Error("Expected RateLimitError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(RateLimitError);
+        expect((err as RateLimitError).retryAfter).toBe(30);
+      }
+    });
+
+    test("should throw NetworkError when network error occurs", async () => {
+      // Given: Network error occurs
+      const getNewReleasesMock = mock(async () => {
+        throw new Error("Network error");
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        browse: {
+          getNewReleases: getNewReleasesMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getNewReleases is called and network error occurs
+      // Then: NetworkError is thrown
+      await expect(adapter.getNewReleases()).rejects.toThrow(NetworkError);
+    });
+  });
+});

@@ -1544,8 +1544,66 @@ export function createSpotifyUserAdapter(
         artistId,
       );
     },
-    async getNewReleases() {
-      throw new Error("Not implemented");
+    /**
+     * Gets new album releases.
+     * @param options - Optional pagination options (limit, offset)
+     * @returns PaginatedResult containing new album releases
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {RateLimitError} If rate limit is exceeded
+     * @throws {NetworkError} If network error occurs
+     */
+    async getNewReleases(
+      options?: SearchOptions,
+    ): Promise<PaginatedResult<Album>> {
+      // Apply default values and constraints
+      // Limit is capped at 50 (Spotify API max), cast to SDK's expected literal union type
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      try {
+        // Call Spotify SDK to get new releases
+        // Signature: getNewReleases(country?, limit?, offset?)
+        const response = await sdk.browse.getNewReleases(
+          undefined, // country - use default
+          limit,
+          offset,
+        );
+
+        // Transform Spotify albums to musix.js Album type
+        const albums = response.albums.items.map(transformSimplifiedAlbum);
+
+        // Calculate hasNext based on whether there are more items
+        const hasNext =
+          offset + response.albums.items.length < response.albums.total;
+
+        return {
+          items: albums,
+          total: response.albums.total,
+          limit,
+          offset,
+          hasNext,
+        };
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid or expired access token");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+
+        // Handle network errors (errors without status property)
+        if (error instanceof Error) {
+          throw new NetworkError(error.message, error);
+        }
+
+        // Handle non-Error objects
+        throw new NetworkError(String(error));
+      }
     },
     async getRecentlyPlayed() {
       throw new Error("Not implemented");
