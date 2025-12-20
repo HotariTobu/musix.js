@@ -968,8 +968,25 @@ export function createSpotifyUserAdapter(
         throw error;
       }
     },
-    async pause() {
-      throw new Error("Not implemented");
+    /**
+     * Pauses playback on the user's active device.
+     * @throws {PremiumRequiredError} If user doesn't have Premium subscription
+     * @throws {NoActiveDeviceError} If no active playback device is found
+     */
+    async pause(): Promise<void> {
+      try {
+        await sdk.player.pausePlayback("");
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 403) {
+            throw new PremiumRequiredError();
+          }
+          if (error.status === 404) {
+            throw new NoActiveDeviceError();
+          }
+        }
+        throw error;
+      }
     },
     async skipToNext() {
       throw new Error("Not implemented");
