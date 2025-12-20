@@ -440,6 +440,39 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
     },
 
     /**
+     * Retrieves multiple albums by their Spotify IDs.
+     * @param ids - Array of Spotify album IDs (maximum 20)
+     * @returns Promise resolving to array of Album objects
+     * @throws {ValidationError} If more than 20 IDs are provided
+     */
+    async getAlbums(ids: string[]): Promise<Album[]> {
+      // AC-059: Empty array handling - return early without API call
+      if (ids.length === 0) {
+        return [];
+      }
+
+      // AC-005: Validate maximum limit (Spotify allows max 20 albums)
+      if (ids.length > 20) {
+        throw new ValidationError(
+          `getAlbums accepts maximum 20 IDs, received ${ids.length}`,
+        );
+      }
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const spotifyAlbums = await sdk.albums.get(ids);
+          // Filter out null values for invalid IDs
+          return spotifyAlbums
+            .filter((album): album is SpotifyAlbum => album != null)
+            .map(transformAlbum);
+        },
+        "album",
+        ids.join(","),
+      );
+    },
+
+    /**
      * Retrieves an artist by their Spotify ID.
      * @param id - The Spotify artist ID
      * @returns Promise resolving to Artist object
