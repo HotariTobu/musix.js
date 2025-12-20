@@ -860,6 +860,64 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
         id,
       );
     },
+
+    /**
+     * Retrieves tracks from a playlist with pagination.
+     * @param playlistId - The Spotify playlist ID
+     * @param options - Optional pagination options (limit, offset)
+     * @returns Promise resolving to PaginatedResult containing tracks
+     * @throws {NotFoundError} If the playlist does not exist
+     * @throws {AuthenticationError} If authentication fails
+     * @throws {RateLimitError} If rate limit is exceeded
+     */
+    async getPlaylistTracks(
+      playlistId: string,
+      options?: SearchOptions,
+    ): Promise<PaginatedResult<Track>> {
+      // Apply default values and constraints
+      // Limit is capped at 50 (Spotify API max), cast to SDK's expected literal union type
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          // Call Spotify SDK to get playlist items
+          // Signature: getPlaylistItems(playlistId, market?, fields?, limit?, offset?)
+          const response = await sdk.playlists.getPlaylistItems(
+            playlistId,
+            undefined, // market
+            undefined, // fields
+            limit,
+            offset,
+          );
+
+          // Transform playlist track items to musix.js Track type
+          // Filter out null tracks (deleted tracks in playlist)
+          const tracks = response.items
+            .filter(
+              (item: SpotifyPlaylistedTrack<SpotifyTrack>) =>
+                item.track !== null,
+            )
+            .map((item: SpotifyPlaylistedTrack<SpotifyTrack>) =>
+              transformTrack(item.track),
+            );
+
+          // Calculate hasNext based on whether there are more items
+          const hasNext = offset + response.items.length < response.total;
+
+          return {
+            items: tracks,
+            total: response.total,
+            limit,
+            offset,
+            hasNext,
+          };
+        },
+        "playlist",
+        playlistId,
+      );
+    },
   };
 }
 
@@ -1971,8 +2029,85 @@ export function createSpotifyUserAdapter(
         throw new NetworkError(String(error));
       }
     },
-    async getPlaylistTracks() {
-      throw new Error("Not implemented");
+    /**
+     * Retrieves tracks from a playlist with pagination.
+     * @param playlistId - The Spotify playlist ID
+     * @param options - Optional pagination options (limit, offset)
+     * @returns Promise resolving to PaginatedResult containing tracks
+     * @throws {NotFoundError} If the playlist does not exist
+     * @throws {AuthenticationError} If authentication fails
+     * @throws {RateLimitError} If rate limit is exceeded
+     * @throws {NetworkError} If network error occurs
+     */
+    async getPlaylistTracks(
+      playlistId: string,
+      options?: SearchOptions,
+    ): Promise<PaginatedResult<Track>> {
+      // Apply default values and constraints
+      // Limit is capped at 50 (Spotify API max), cast to SDK's expected literal union type
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      try {
+        // Call Spotify SDK to get playlist items
+        // Signature: getPlaylistItems(playlistId, market?, fields?, limit?, offset?)
+        const response = await sdk.playlists.getPlaylistItems(
+          playlistId,
+          undefined, // market
+          undefined, // fields
+          limit,
+          offset,
+        );
+
+        // Transform playlist track items to musix.js Track type
+        // Filter out null tracks (deleted tracks in playlist)
+        const tracks = response.items
+          .filter(
+            (item: SpotifyPlaylistedTrack<SpotifyTrack>) => item.track !== null,
+          )
+          .map((item: SpotifyPlaylistedTrack<SpotifyTrack>) =>
+            transformTrack(item.track),
+          );
+
+        // Calculate hasNext based on whether there are more items
+        const hasNext = offset + response.items.length < response.total;
+
+        return {
+          items: tracks,
+          total: response.total,
+          limit,
+          offset,
+          hasNext,
+        };
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid or expired access token");
+          }
+          if (error.status === 404) {
+            throw new NotFoundError("playlist", playlistId);
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+          // Other HTTP errors
+          throw new SpotifyApiError(
+            error.status,
+            error.message || "Unknown error",
+          );
+        }
+
+        // Handle network errors (errors without status property)
+        if (error instanceof Error) {
+          throw new NetworkError(error.message, error);
+        }
+
+        // Handle non-Error objects
+        throw new NetworkError(String(error));
+      }
     },
   };
 }
@@ -2304,6 +2439,48 @@ function createBaseAdapterMethods(
         },
         "playlist",
         id,
+      );
+    },
+
+    async getPlaylistTracks(
+      playlistId: string,
+      options?: SearchOptions,
+    ): Promise<PaginatedResult<Track>> {
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const response = await sdk.playlists.getPlaylistItems(
+            playlistId,
+            undefined,
+            undefined,
+            limit,
+            offset,
+          );
+
+          const tracks = response.items
+            .filter(
+              (item: SpotifyPlaylistedTrack<SpotifyTrack>) =>
+                item.track !== null,
+            )
+            .map((item: SpotifyPlaylistedTrack<SpotifyTrack>) =>
+              transformTrack(item.track),
+            );
+
+          const hasNext = offset + response.items.length < response.total;
+
+          return {
+            items: tracks,
+            total: response.total,
+            limit,
+            offset,
+            hasNext,
+          };
+        },
+        "playlist",
+        playlistId,
       );
     },
   };
