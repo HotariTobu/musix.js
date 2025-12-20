@@ -29,9 +29,11 @@ import type {
   Album,
   Artist,
   CurrentUser,
+  Device,
   Image,
   PaginatedResult,
   PlayOptions,
+  PlaybackState,
   Playlist,
   SearchOptions,
   SearchResult,
@@ -1033,8 +1035,37 @@ export function createSpotifyUserAdapter(
         throw error;
       }
     },
-    async getPlaybackState() {
-      throw new Error("Not implemented");
+    async getPlaybackState(): Promise<PlaybackState | null> {
+      const state = await sdk.player.getPlaybackState();
+
+      if (!state) {
+        return null;
+      }
+
+      const device: Device = {
+        id: state.device.id ?? "",
+        name: state.device.name,
+        type: state.device.type,
+        isActive: state.device.is_active,
+        volumePercent: state.device.volume_percent ?? 0,
+      };
+
+      // Transform track if item exists and is a track (has album property)
+      // Note: item can be either Track or Episode; we only support tracks
+      const track =
+        state.item && "album" in state.item
+          ? transformTrack(state.item as SpotifyTrack)
+          : null;
+
+      return {
+        isPlaying: state.is_playing,
+        track,
+        progressMs: state.progress_ms ?? 0,
+        durationMs: state.item?.duration_ms ?? 0,
+        device,
+        shuffleState: state.shuffle_state,
+        repeatState: state.repeat_state as "off" | "track" | "context",
+      };
     },
     async getAvailableDevices() {
       throw new Error("Not implemented");

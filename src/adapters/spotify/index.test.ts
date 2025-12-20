@@ -8106,4 +8106,264 @@ describe("createSpotifyUserAdapter", () => {
       await expect(adapter.seek(60000)).rejects.toThrow(NoActiveDeviceError);
     });
   });
+
+  describe("AC-024: Get Playback State [CH-017]", () => {
+    test("should return PlaybackState with all fields when playback is active", async () => {
+      // Given: User is authenticated with active playback
+      const mockPlaybackState = {
+        is_playing: true,
+        progress_ms: 45000,
+        item: {
+          id: "4iV5W9uYEdYUVa79Axb7Rh",
+          name: "Hotel California",
+          duration_ms: 391376,
+          preview_url: "https://p.scdn.co/mp3-preview/abc123",
+          external_urls: {
+            spotify: "https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh",
+          },
+          artists: [
+            {
+              id: "0ECwFtbIWEVNwjlrfc6xoL",
+              name: "Eagles",
+              external_urls: {
+                spotify:
+                  "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+              },
+            },
+          ],
+          album: {
+            id: "2widuo17g5CEC66IbzveRu",
+            name: "Hotel California",
+            release_date: "1976-12-08",
+            total_tracks: 9,
+            images: [
+              {
+                url: "https://i.scdn.co/image/abc123",
+                width: 640,
+                height: 640,
+              },
+            ],
+            external_urls: {
+              spotify: "https://open.spotify.com/album/2widuo17g5CEC66IbzveRu",
+            },
+            artists: [
+              {
+                id: "0ECwFtbIWEVNwjlrfc6xoL",
+                name: "Eagles",
+                external_urls: {
+                  spotify:
+                    "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+                },
+              },
+            ],
+          },
+        },
+        device: {
+          id: "device-123",
+          name: "My Laptop",
+          type: "Computer",
+          is_active: true,
+          volume_percent: 75,
+        },
+        shuffle_state: false,
+        repeat_state: "off",
+      };
+
+      const getPlaybackStateMock = mock(async () => mockPlaybackState);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getPlaybackState: getPlaybackStateMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-playback-state"],
+      });
+
+      // When: getPlaybackState() is called
+      const result = await adapter.getPlaybackState();
+
+      // Then: Returns PlaybackState with all fields populated
+      expect(result).not.toBeNull();
+      expect(result?.isPlaying).toBe(true);
+      expect(result?.track).not.toBeNull();
+      expect(result?.track?.id).toBe("4iV5W9uYEdYUVa79Axb7Rh");
+      expect(result?.track?.name).toBe("Hotel California");
+      expect(result?.progressMs).toBe(45000);
+      expect(result?.durationMs).toBe(391376);
+      expect(result?.device.id).toBe("device-123");
+      expect(result?.device.name).toBe("My Laptop");
+      expect(result?.device.type).toBe("Computer");
+      expect(result?.device.isActive).toBe(true);
+      expect(result?.device.volumePercent).toBe(75);
+      expect(result?.shuffleState).toBe(false);
+      expect(result?.repeatState).toBe("off");
+      expect(getPlaybackStateMock).toHaveBeenCalled();
+    });
+
+    test("should return null when no active playback", async () => {
+      // Given: User is authenticated but no playback is active
+      const getPlaybackStateMock = mock(async () => null);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getPlaybackState: getPlaybackStateMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-playback-state"],
+      });
+
+      // When: getPlaybackState() is called
+      const result = await adapter.getPlaybackState();
+
+      // Then: Returns null
+      expect(result).toBeNull();
+      expect(getPlaybackStateMock).toHaveBeenCalled();
+    });
+
+    test("should handle different repeat states correctly", async () => {
+      // Given: User is authenticated with repeat state "track"
+      const mockPlaybackState = {
+        is_playing: true,
+        progress_ms: 45000,
+        item: {
+          id: "4iV5W9uYEdYUVa79Axb7Rh",
+          name: "Hotel California",
+          duration_ms: 391376,
+          preview_url: "https://p.scdn.co/mp3-preview/abc123",
+          external_urls: {
+            spotify: "https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh",
+          },
+          artists: [
+            {
+              id: "0ECwFtbIWEVNwjlrfc6xoL",
+              name: "Eagles",
+              external_urls: {
+                spotify:
+                  "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+              },
+            },
+          ],
+          album: {
+            id: "2widuo17g5CEC66IbzveRu",
+            name: "Hotel California",
+            release_date: "1976-12-08",
+            total_tracks: 9,
+            images: [
+              {
+                url: "https://i.scdn.co/image/abc123",
+                width: 640,
+                height: 640,
+              },
+            ],
+            external_urls: {
+              spotify: "https://open.spotify.com/album/2widuo17g5CEC66IbzveRu",
+            },
+            artists: [
+              {
+                id: "0ECwFtbIWEVNwjlrfc6xoL",
+                name: "Eagles",
+                external_urls: {
+                  spotify:
+                    "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+                },
+              },
+            ],
+          },
+        },
+        device: {
+          id: "device-123",
+          name: "My Laptop",
+          type: "Computer",
+          is_active: true,
+          volume_percent: 75,
+        },
+        shuffle_state: true,
+        repeat_state: "track",
+      };
+
+      const getPlaybackStateMock = mock(async () => mockPlaybackState);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getPlaybackState: getPlaybackStateMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-playback-state"],
+      });
+
+      // When: getPlaybackState() is called
+      const result = await adapter.getPlaybackState();
+
+      // Then: Returns PlaybackState with correct repeat and shuffle states
+      expect(result).not.toBeNull();
+      expect(result?.shuffleState).toBe(true);
+      expect(result?.repeatState).toBe("track");
+    });
+  });
 });
