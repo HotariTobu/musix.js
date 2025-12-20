@@ -487,6 +487,12 @@ describe("Core Types", () => {
         ): Promise<Track[]> => {
           throw new Error("Not implemented");
         },
+        getAlbumTracks: async (
+          albumId: string,
+          options?: SearchOptions,
+        ): Promise<PaginatedResult<Track>> => {
+          throw new Error("Not implemented");
+        },
         getPlaylist: async (id: string) => {
           throw new Error("Not implemented");
         },

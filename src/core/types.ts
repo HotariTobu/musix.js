@@ -122,5 +122,9 @@ export interface SpotifyAdapter {
     options?: SearchOptions,
   ): Promise<PaginatedResult<Album>>;
   getArtistTopTracks(artistId: string, market: string): Promise<Track[]>;
+  getAlbumTracks(
+    albumId: string,
+    options?: SearchOptions,
+  ): Promise<PaginatedResult<Track>>;
   getPlaylist(id: string): Promise<Playlist>;
 }
