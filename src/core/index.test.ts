@@ -8,6 +8,7 @@ import type {
   Playlist,
   SearchOptions,
   SearchResult,
+  SimplifiedPlaylist,
   SpotifyAdapter,
   SpotifyConfig,
   Track,
@@ -453,6 +454,12 @@ describe("Core Types", () => {
           throw new Error("Not implemented");
         },
         searchArtists: async (query: string, options?: SearchOptions) => {
+          throw new Error("Not implemented");
+        },
+        searchPlaylists: async (
+          query: string,
+          options?: SearchOptions,
+        ): Promise<SearchResult<SimplifiedPlaylist>> => {
           throw new Error("Not implemented");
         },
         getAlbum: async (id: string) => {

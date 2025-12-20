@@ -53,6 +53,17 @@ export interface Playlist {
   externalUrl: string;
 }
 
+/** Simplified playlist for search results (without full track list) */
+export interface SimplifiedPlaylist {
+  id: string;
+  name: string;
+  description: string | null;
+  owner: User;
+  totalTracks: number;
+  images: Image[];
+  externalUrl: string;
+}
+
 /** Search options for paginated queries */
 export interface SearchOptions {
   limit?: number;
@@ -89,6 +100,10 @@ export interface SpotifyAdapter {
     query: string,
     options?: SearchOptions,
   ): Promise<SearchResult<Artist>>;
+  searchPlaylists(
+    query: string,
+    options?: SearchOptions,
+  ): Promise<SearchResult<SimplifiedPlaylist>>;
   getAlbum(id: string): Promise<Album>;
   getAlbums(ids: string[]): Promise<Album[]>;
   getArtist(id: string): Promise<Artist>;

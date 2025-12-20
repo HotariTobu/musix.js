@@ -6,6 +6,7 @@ export type {
   Album,
   Track,
   Playlist,
+  SimplifiedPlaylist,
   SearchOptions,
   SearchResult,
   SpotifyConfig,
