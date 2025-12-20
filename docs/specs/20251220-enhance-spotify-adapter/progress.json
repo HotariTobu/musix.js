@@ -22,7 +22,7 @@
     { "id": "CH-018", "passes": true },
     { "id": "CH-019", "passes": true },
     { "id": "CH-020", "passes": true },
-    { "id": "CH-021", "passes": false },
+    { "id": "CH-021", "passes": true },
     { "id": "CH-022", "passes": false },
     { "id": "CH-023", "passes": false },
     { "id": "CH-024", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "CH-020 (getSavedTracks) complete. Implemented with AC-027 tests (5 total). Returns PaginatedResult<Track> with items, total, limit, offset, hasNext. Default limit 20, offset 0. Calls sdk.currentUser.tracks.savedTracks(limit, offset). Transforms saved tracks using transformTrack(). Next session should continue with CH-021 (saveTrack/removeSavedTrack)."
+  "notes": "CH-021 (saveTrack/removeSavedTrack) complete. Implemented with AC-028 and AC-029 tests (9 total). saveTrack(id) adds track to library via sdk.currentUser.tracks.saveTracks([id]). removeSavedTrack(id) removes track via sdk.currentUser.tracks.removeSavedTracks([id]). Both handle 401 -> AuthenticationError, 429 -> RateLimitError with retryAfter. Next session should continue with CH-022 (getUserPlaylists)."
 }
