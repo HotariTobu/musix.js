@@ -26,7 +26,7 @@
     { "id": "CH-022", "passes": true },
     { "id": "CH-023", "passes": true },
     { "id": "CH-024", "passes": true },
-    { "id": "CH-025", "passes": false },
+    { "id": "CH-025", "passes": true },
     { "id": "CH-026", "passes": false },
     { "id": "CH-027", "passes": false },
     { "id": "CH-028", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "Session ended cleanly. 24/42 requirements passing. All User Library - Tracks and Albums methods complete (CH-020 to CH-024). Next session should start with CH-025 (getFollowedArtists) - implement method via sdk.currentUser.followedArtists(type, limit, after). Note: followedArtists uses cursor-based pagination (after parameter) unlike offset-based pagination in other methods. After CH-025/CH-026, continue with Discovery features (CH-027 onwards)."
+  "notes": "Session completed CH-025 (getFollowedArtists). 25/42 requirements passing. Next session should start with CH-026 (followArtist/unfollowArtist) - implement via sdk.currentUser.followArtistsOrUsers() and sdk.currentUser.unfollowArtistsOrUsers(). After CH-026, continue with Discovery features (CH-027: getRecommendations)."
 }

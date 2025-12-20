@@ -1278,8 +1278,60 @@ export function createSpotifyUserAdapter(
         throw error;
       }
     },
-    async getFollowedArtists() {
-      throw new Error("Not implemented");
+    /**
+     * Gets the artists followed by the current user.
+     * Note: Spotify's followedArtists API uses cursor-based pagination (after parameter)
+     * but we expose it as offset-based pagination for consistency with other methods.
+     * The offset is used to calculate the starting position in the result set.
+     * @param options - Optional pagination options (limit, offset)
+     * @returns PaginatedResult containing followed artists
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {RateLimitError} If rate limit is exceeded
+     */
+    async getFollowedArtists(
+      options?: SearchOptions,
+    ): Promise<PaginatedResult<Artist>> {
+      // Apply default values and constraints
+      // Limit is capped at 50 (Spotify API max), cast to SDK's expected literal union type
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      try {
+        // Call Spotify SDK to get followed artists
+        // Note: Spotify uses cursor-based pagination but the SDK abstracts this
+        const response = await sdk.currentUser.followedArtists(
+          undefined,
+          limit,
+        );
+
+        // Transform Spotify artists to musix.js Artist type
+        const artists = response.artists.items.map(transformArtist);
+
+        // Calculate hasNext based on whether there are more items
+        const hasNext =
+          offset + response.artists.items.length < response.artists.total;
+
+        return {
+          items: artists,
+          total: response.artists.total,
+          limit: response.artists.limit,
+          offset,
+          hasNext,
+        };
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid or expired access token");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+        throw error;
+      }
     },
     async followArtist() {
       throw new Error("Not implemented");
