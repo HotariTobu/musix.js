@@ -7,11 +7,11 @@
     { "id": "FR-003", "passes": true },
     { "id": "FR-004", "passes": true },
     { "id": "FR-005", "passes": true },
-    { "id": "FR-006", "passes": false },
+    { "id": "FR-006", "passes": true },
     { "id": "NFR-001", "passes": false },
     { "id": "NFR-002", "passes": false },
     { "id": "NFR-003", "passes": false }
   ],
   "blockers": [],
-  "notes": "FR-005 complete. getArtist implemented with transformArtist handling optional genres/images. 20 new tests covering AC-007. Next: FR-006 (getPlaylist)."
+  "notes": "FR-006 complete. getPlaylist implemented with transformPlaylist handling owner, tracks, images. 17 new tests covering AC-008. Next: NFR-001/002/003 (error handling and token refresh)."
 }

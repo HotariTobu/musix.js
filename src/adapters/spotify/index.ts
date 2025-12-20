@@ -4,6 +4,8 @@ import type {
   Album as SpotifyAlbum,
   Artist as SpotifyArtist,
   Image as SpotifyImage,
+  Playlist as SpotifyPlaylist,
+  PlaylistedTrack as SpotifyPlaylistedTrack,
   SimplifiedAlbum as SpotifySimplifiedAlbum,
   SimplifiedArtist as SpotifySimplifiedArtist,
   Track as SpotifyTrack,
@@ -19,6 +21,7 @@ import type {
   SpotifyAdapter,
   SpotifyConfig,
   Track,
+  User,
 } from "../../core/types";
 
 /**
@@ -114,6 +117,34 @@ function transformTrack(track: SpotifyTrack): Track {
     durationMs: track.duration_ms,
     previewUrl: track.preview_url,
     externalUrl: track.external_urls.spotify,
+  };
+}
+
+/**
+ * Transforms a Spotify SDK Playlist to musix.js Playlist.
+ * @param playlist - Spotify SDK Playlist
+ * @returns musix.js Playlist
+ */
+function transformPlaylist(playlist: SpotifyPlaylist<SpotifyTrack>): Playlist {
+  const owner: User = {
+    id: playlist.owner.id,
+    displayName: playlist.owner.display_name,
+  };
+
+  const tracks: Track[] = playlist.tracks.items
+    .filter((item: SpotifyPlaylistedTrack<SpotifyTrack>) => item.track !== null)
+    .map((item: SpotifyPlaylistedTrack<SpotifyTrack>) =>
+      transformTrack(item.track),
+    );
+
+  return {
+    id: playlist.id,
+    name: playlist.name,
+    description: playlist.description || null,
+    owner,
+    tracks,
+    images: playlist.images.map(transformImage),
+    externalUrl: playlist.external_urls.spotify,
   };
 }
 
@@ -249,9 +280,22 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
      * Retrieves a playlist by its Spotify ID.
      * @param id - The Spotify playlist ID
      * @returns Promise resolving to Playlist object
+     * @throws {NotFoundError} If the playlist does not exist
      */
     async getPlaylist(id: string): Promise<Playlist> {
-      throw new Error("Not implemented");
+      try {
+        const spotifyPlaylist = await sdk.playlists.getPlaylist(id);
+        return transformPlaylist(spotifyPlaylist);
+      } catch (error) {
+        // Check if it's a 404 error (playlist not found)
+        if (error && typeof error === "object" && "status" in error) {
+          if (error.status === 404) {
+            throw new NotFoundError("playlist", id);
+          }
+        }
+        // Re-throw any other errors
+        throw error;
+      }
     },
   };
 }
