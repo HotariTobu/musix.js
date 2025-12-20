@@ -13,7 +13,7 @@
     { "id": "CH-009", "passes": true },
     { "id": "CH-010", "passes": true },
     { "id": "CH-011", "passes": true },
-    { "id": "CH-012", "passes": false },
+    { "id": "CH-012", "passes": true },
     { "id": "CH-013", "passes": false },
     { "id": "CH-014", "passes": false },
     { "id": "CH-015", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "User Authentication complete (CH-010, CH-011). Next session should start with CH-012 (play) - Playback Control section."
+  "notes": "CH-012 (play) complete. Implemented with AC-017, AC-018, AC-019 tests (11 total). Note: SDK requires deviceId as string, so we pass empty string when not specified. Next session should start with CH-013 (pause)."
 }

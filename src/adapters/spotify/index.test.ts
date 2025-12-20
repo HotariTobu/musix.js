@@ -3,7 +3,9 @@ import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 import {
   AuthenticationError,
   NetworkError,
+  NoActiveDeviceError,
   NotFoundError,
+  PremiumRequiredError,
   RateLimitError,
   SpotifyApiError,
   ValidationError,
@@ -7002,6 +7004,546 @@ describe("createSpotifyUserAdapter", () => {
       // Then: Returns CurrentUser with empty displayName
       expect(user.id).toBe("user-789");
       expect(user.displayName).toBe("");
+    });
+  });
+
+  describe("AC-017: Play Track [CH-012]", () => {
+    test("should start playback on active device with trackIds", async () => {
+      // Given: User is authenticated with Premium
+      const startPlaybackMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          startResumePlayback: startPlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: play is called with trackIds
+      await adapter.play({ trackIds: ["track-id-1", "track-id-2"] });
+
+      // Then: SDK startResumePlayback is called with track URIs
+      expect(startPlaybackMock).toHaveBeenCalledWith(
+        "", // deviceId (empty string when not specified, SDK requires string type)
+        undefined, // context_uri
+        ["spotify:track:track-id-1", "spotify:track:track-id-2"], // uris
+        undefined, // offset
+        undefined, // position_ms
+      );
+    });
+
+    test("should start playback with contextUri (album/playlist)", async () => {
+      // Given: User is authenticated with Premium
+      const startPlaybackMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          startResumePlayback: startPlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: play is called with contextUri
+      await adapter.play({ contextUri: "spotify:album:album-id-123" });
+
+      // Then: SDK startResumePlayback is called with context URI
+      expect(startPlaybackMock).toHaveBeenCalledWith(
+        "", // deviceId (empty string when not specified, SDK requires string type)
+        "spotify:album:album-id-123", // context_uri
+        undefined, // uris
+        undefined, // offset
+        undefined, // position_ms
+      );
+    });
+
+    test("should start playback with deviceId", async () => {
+      // Given: User is authenticated with Premium
+      const startPlaybackMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          startResumePlayback: startPlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: play is called with deviceId
+      await adapter.play({ deviceId: "device-123", trackIds: ["track-id"] });
+
+      // Then: SDK startResumePlayback is called with deviceId
+      expect(startPlaybackMock).toHaveBeenCalledWith(
+        "device-123", // deviceId
+        undefined, // context_uri
+        ["spotify:track:track-id"], // uris
+        undefined, // offset
+        undefined, // position_ms
+      );
+    });
+
+    test("should start playback with offsetIndex and positionMs", async () => {
+      // Given: User is authenticated with Premium
+      const startPlaybackMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          startResumePlayback: startPlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: play is called with offsetIndex and positionMs
+      await adapter.play({
+        contextUri: "spotify:album:album-id",
+        offsetIndex: 5,
+        positionMs: 30000,
+      });
+
+      // Then: SDK startResumePlayback is called with offset and position
+      expect(startPlaybackMock).toHaveBeenCalledWith(
+        "", // deviceId (empty string when not specified, SDK requires string type)
+        "spotify:album:album-id", // context_uri
+        undefined, // uris
+        { position: 5 }, // offset
+        30000, // position_ms
+      );
+    });
+
+    test("should resume playback when called without options", async () => {
+      // Given: User is authenticated with Premium
+      const startPlaybackMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          startResumePlayback: startPlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: play is called without options (resume)
+      await adapter.play();
+
+      // Then: SDK startResumePlayback is called without params (resume)
+      expect(startPlaybackMock).toHaveBeenCalledWith(
+        "", // deviceId (empty string, SDK requires string type)
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      );
+    });
+  });
+
+  describe("AC-018: Play - No Premium [CH-012]", () => {
+    test("should throw PremiumRequiredError when user has no Premium", async () => {
+      // Given: User is authenticated without Premium (403 Forbidden)
+      const error = new Error("Forbidden") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 403;
+      error.headers = {};
+
+      const startPlaybackMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          startResumePlayback: startPlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: play is called
+      // Then: PremiumRequiredError is thrown
+      await expect(adapter.play()).rejects.toThrow(PremiumRequiredError);
+    });
+
+    test("PremiumRequiredError should have correct message", async () => {
+      // Given: User is authenticated without Premium (403 Forbidden)
+      const error = new Error("Forbidden") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 403;
+      error.headers = {};
+
+      const startPlaybackMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          startResumePlayback: startPlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: play is called
+      // Then: Error message mentions Premium
+      try {
+        await adapter.play();
+        throw new Error("Expected PremiumRequiredError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(PremiumRequiredError);
+        expect((err as Error).message).toContain("Premium");
+      }
+    });
+  });
+
+  describe("AC-019: Play - No Active Device [CH-012]", () => {
+    test("should throw NoActiveDeviceError when no device is active", async () => {
+      // Given: User has Premium but no active device (404 with specific message)
+      const error = new Error("No active device found") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 404;
+      error.headers = {};
+
+      const startPlaybackMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          startResumePlayback: startPlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: play is called without deviceId
+      // Then: NoActiveDeviceError is thrown
+      await expect(adapter.play()).rejects.toThrow(NoActiveDeviceError);
+    });
+
+    test("NoActiveDeviceError should have correct message", async () => {
+      // Given: User has Premium but no active device
+      const error = new Error("No active device found") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 404;
+      error.headers = {};
+
+      const startPlaybackMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          startResumePlayback: startPlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: play is called
+      // Then: Error message mentions device
+      try {
+        await adapter.play();
+        throw new Error("Expected NoActiveDeviceError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(NoActiveDeviceError);
+        expect((err as Error).message).toContain("device");
+      }
+    });
+  });
+
+  describe("PlayOptions Validation [CH-012]", () => {
+    test("should throw ValidationError when both trackIds and contextUri are provided", async () => {
+      // Given: User is authenticated with Premium
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          startResumePlayback: mock(async () => {}),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: play is called with both trackIds and contextUri
+      // Then: ValidationError is thrown
+      await expect(
+        adapter.play({
+          trackIds: ["track-id-1"],
+          contextUri: "spotify:album:album-id",
+        }),
+      ).rejects.toThrow(ValidationError);
+    });
+
+    test("ValidationError message should explain the conflict", async () => {
+      // Given: User is authenticated with Premium
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          startResumePlayback: mock(async () => {}),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: play is called with both trackIds and contextUri
+      // Then: Error message explains the conflict
+      try {
+        await adapter.play({
+          trackIds: ["track-id-1"],
+          contextUri: "spotify:album:album-id",
+        });
+        throw new Error("Expected ValidationError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(ValidationError);
+        expect((err as Error).message).toContain("trackIds");
+        expect((err as Error).message).toContain("contextUri");
+      }
     });
   });
 });
