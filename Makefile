@@ -5,6 +5,7 @@ install:
 
 check:
 	bun run check:code
+	bun run check:types
 
 test:
 	bun test
