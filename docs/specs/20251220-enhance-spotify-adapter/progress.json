@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "Session 2025-12-21. 38/42 requirements passing. CH-038 (setVolume) implemented with 8 tests for AC-053 and AC-054. Validates volume range 0-100, throws ValidationError for out-of-range values, handles 403/404/429 errors. Next session should implement CH-039 (setShuffle). Remaining: CH-039~042 (Extended Playback Control). 4 requirements left."
+  "notes": "Session ended 2025-12-21. 38/42 requirements passing. Next session should start with CH-039 (setShuffle) - see spec AC-055. Remaining: CH-039 (setShuffle), CH-040 (setRepeat), CH-041 (getQueue), CH-042 (addToQueue). All are Extended Playback Control methods following the same pattern as setVolume. Reference existing playback methods in src/adapters/spotify/index.ts for implementation patterns."
 }
