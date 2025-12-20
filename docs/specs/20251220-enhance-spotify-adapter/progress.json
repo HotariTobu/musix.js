@@ -38,7 +38,7 @@
     { "id": "CH-034", "passes": true },
     { "id": "CH-035", "passes": true },
     { "id": "CH-036", "passes": true },
-    { "id": "CH-037", "passes": false },
+    { "id": "CH-037", "passes": true },
     { "id": "CH-038", "passes": false },
     { "id": "CH-039", "passes": false },
     { "id": "CH-040", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "Session 2025-12-21. 36/42 requirements passing. CH-036 (removeTracksFromPlaylist) implemented with 10 tests for AC-051. Converts track IDs to Spotify URIs, handles empty array early return, 401/404/429 error handling, NetworkError. Next session should implement CH-037 (getPlaylistTracks). Remaining: CH-037 (Playlist Management), CH-038~042 (Extended Playback Control). 6 requirements left."
+  "notes": "Session 2025-12-21. 37/42 requirements passing. CH-037 (getPlaylistTracks) implemented with 16 tests for AC-052 and AC-052a. Returns PaginatedResult<Track> with pagination support, hasNext calculation, null track filtering, 401/404/429 error handling. Playlist Management complete. Next session should implement CH-038 (setVolume). Remaining: CH-038~042 (Extended Playback Control). 5 requirements left."
 }
