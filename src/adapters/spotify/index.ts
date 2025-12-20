@@ -18,7 +18,9 @@ import type {
 import {
   AuthenticationError,
   NetworkError,
+  NoActiveDeviceError,
   NotFoundError,
+  PremiumRequiredError,
   RateLimitError,
   SpotifyApiError,
   ValidationError,
@@ -29,6 +31,7 @@ import type {
   CurrentUser,
   Image,
   PaginatedResult,
+  PlayOptions,
   Playlist,
   SearchOptions,
   SearchResult,
@@ -920,10 +923,50 @@ export function createSpotifyUserAdapter(
       return transformUserProfile(profile);
     },
 
-    // Placeholder implementations for other SpotifyUserAdapter methods
-    // These will be implemented in future sessions
-    async play() {
-      throw new Error("Not implemented");
+    /**
+     * Starts or resumes playback on the user's active device.
+     * @param options - Playback options (trackIds, contextUri, deviceId, offsetIndex, positionMs)
+     * @throws {ValidationError} If both trackIds and contextUri are provided
+     * @throws {PremiumRequiredError} If user doesn't have Premium subscription
+     * @throws {NoActiveDeviceError} If no active playback device is found
+     */
+    async play(options?: PlayOptions): Promise<void> {
+      // Validate mutually exclusive options
+      if (options?.trackIds && options?.contextUri) {
+        throw new ValidationError(
+          "Cannot specify both trackIds and contextUri. Choose one playback target.",
+        );
+      }
+
+      // Convert trackIds to Spotify URIs
+      const uris = options?.trackIds?.map((id) => `spotify:track:${id}`);
+
+      // Build offset object if offsetIndex is provided
+      const offset =
+        options?.offsetIndex !== undefined
+          ? { position: options.offsetIndex }
+          : undefined;
+
+      try {
+        await sdk.player.startResumePlayback(
+          options?.deviceId ?? "",
+          options?.contextUri,
+          uris,
+          offset,
+          options?.positionMs,
+        );
+      } catch (error) {
+        // Handle playback-specific errors
+        if (isHttpError(error)) {
+          if (error.status === 403) {
+            throw new PremiumRequiredError();
+          }
+          if (error.status === 404) {
+            throw new NoActiveDeviceError();
+          }
+        }
+        throw error;
+      }
     },
     async pause() {
       throw new Error("Not implemented");
