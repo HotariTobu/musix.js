@@ -16293,3 +16293,407 @@ describe("createPlaylist", () => {
     });
   });
 });
+
+// CH-034: Update Playlist Details
+describe("updatePlaylistDetails", () => {
+  describe("AC-049: Update Playlist Details [CH-034]", () => {
+    test("should update playlist name when called with name only", async () => {
+      // Given: User is authenticated and owns the playlist
+      const playlistId = "playlist-123";
+      const changePlaylistDetailsMock = mock(
+        async (playlistId: string, details: unknown) => {
+          // Verify the correct parameters are passed
+          expect(playlistId).toBe("playlist-123");
+          expect(details).toEqual({ name: "New Name" });
+          return {}; // SDK returns empty object for successful update
+        },
+      );
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        playlists: {
+          changePlaylistDetails: changePlaylistDetailsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public", "playlist-modify-private"],
+      });
+
+      // When: updatePlaylistDetails(playlistId, { name: "New Name" }) is called
+      await adapter.updatePlaylistDetails(playlistId, { name: "New Name" });
+
+      // Then: Playlist details are updated
+      expect(changePlaylistDetailsMock).toHaveBeenCalledTimes(1);
+    });
+
+    test("should resolve without error when update is successful", async () => {
+      // Given: User is authenticated and owns the playlist
+      const playlistId = "playlist-456";
+      const changePlaylistDetailsMock = mock(async () => ({}));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-456",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-456",
+            },
+          })),
+        },
+        playlists: {
+          changePlaylistDetails: changePlaylistDetailsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: updatePlaylistDetails is called
+      const result = await adapter.updatePlaylistDetails(playlistId, {
+        name: "Updated Name",
+      });
+
+      // Then: Promise resolves without error and returns void
+      expect(result).toBeUndefined();
+      expect(changePlaylistDetailsMock).toHaveBeenCalled();
+    });
+  });
+
+  describe("Update Multiple Fields [CH-034]", () => {
+    test("should update multiple fields when all details are provided", async () => {
+      // Given: User is authenticated and owns the playlist
+      const playlistId = "playlist-789";
+      const details = {
+        name: "New Playlist Name",
+        description: "Updated description",
+        public: false,
+      };
+
+      const changePlaylistDetailsMock = mock(
+        async (playlistId: string, details: unknown) => {
+          // Verify all fields are passed
+          expect(details).toEqual({
+            name: "New Playlist Name",
+            description: "Updated description",
+            public: false,
+          });
+          return {};
+        },
+      );
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-789",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-789",
+            },
+          })),
+        },
+        playlists: {
+          changePlaylistDetails: changePlaylistDetailsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-private"],
+      });
+
+      // When: updatePlaylistDetails is called with multiple fields
+      await adapter.updatePlaylistDetails(playlistId, details);
+
+      // Then: All fields are updated
+      expect(changePlaylistDetailsMock).toHaveBeenCalledTimes(1);
+    });
+
+    test("should update only description when only description is provided", async () => {
+      // Given: User is authenticated and owns the playlist
+      const playlistId = "playlist-desc";
+      const changePlaylistDetailsMock = mock(
+        async (playlistId: string, details: unknown) => {
+          // Verify only description is passed
+          expect(details).toEqual({
+            description: "Just updating the description",
+          });
+          return {};
+        },
+      );
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-desc",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-desc",
+            },
+          })),
+        },
+        playlists: {
+          changePlaylistDetails: changePlaylistDetailsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: updatePlaylistDetails is called with only description
+      await adapter.updatePlaylistDetails(playlistId, {
+        description: "Just updating the description",
+      });
+
+      // Then: Only description is updated
+      expect(changePlaylistDetailsMock).toHaveBeenCalledTimes(1);
+    });
+
+    test("should update only public flag when only public is provided", async () => {
+      // Given: User is authenticated and owns the playlist
+      const playlistId = "playlist-public";
+      const changePlaylistDetailsMock = mock(
+        async (playlistId: string, details: unknown) => {
+          // Verify only public flag is passed
+          expect(details).toEqual({ public: true });
+          return {};
+        },
+      );
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-public",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-public",
+            },
+          })),
+        },
+        playlists: {
+          changePlaylistDetails: changePlaylistDetailsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: updatePlaylistDetails is called with only public flag
+      await adapter.updatePlaylistDetails(playlistId, { public: true });
+
+      // Then: Only public flag is updated
+      expect(changePlaylistDetailsMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("Error Handling [CH-034]", () => {
+    test("should throw AuthenticationError when user is not authenticated (401)", async () => {
+      // Given: Invalid authentication
+      const changePlaylistDetailsMock = mock(async () => {
+        const error = new Error("Unauthorized") as Error & { status: number };
+        error.status = 401;
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        playlists: {
+          changePlaylistDetails: changePlaylistDetailsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: updatePlaylistDetails is called without valid authentication
+      // Then: AuthenticationError is thrown
+      await expect(
+        adapter.updatePlaylistDetails("playlist-123", { name: "New Name" }),
+      ).rejects.toThrow(AuthenticationError);
+    });
+
+    test("should throw RateLimitError when rate limit is exceeded (429)", async () => {
+      // Given: Rate limit exceeded response
+      const changePlaylistDetailsMock = mock(async () => {
+        const error = new Error("Too Many Requests") as Error & {
+          status: number;
+          headers: Record<string, string>;
+        };
+        error.status = 429;
+        error.headers = { "retry-after": "60" };
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        playlists: {
+          changePlaylistDetails: changePlaylistDetailsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: updatePlaylistDetails is called and rate limit is exceeded
+      // Then: RateLimitError is thrown with correct retryAfter value
+      try {
+        await adapter.updatePlaylistDetails("playlist-123", {
+          name: "New Name",
+        });
+        expect.unreachable("Should have thrown RateLimitError");
+      } catch (error) {
+        expect(error).toBeInstanceOf(RateLimitError);
+        expect((error as RateLimitError).retryAfter).toBe(60);
+      }
+    });
+
+    test("should throw NetworkError when network error occurs", async () => {
+      // Given: Network error
+      const changePlaylistDetailsMock = mock(async () => {
+        throw new Error("Network error: connection refused");
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        playlists: {
+          changePlaylistDetails: changePlaylistDetailsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: updatePlaylistDetails is called and network error occurs
+      // Then: NetworkError is thrown
+      await expect(
+        adapter.updatePlaylistDetails("playlist-123", { name: "New Name" }),
+      ).rejects.toThrow(NetworkError);
+    });
+  });
+});
