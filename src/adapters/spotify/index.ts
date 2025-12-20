@@ -28,6 +28,7 @@ import {
 import type {
   Album,
   Artist,
+  CreatePlaylistOptions,
   CurrentUser,
   Device,
   Image,
@@ -1797,8 +1798,54 @@ export function createSpotifyUserAdapter(
         throw new NetworkError(String(error));
       }
     },
-    async createPlaylist() {
-      throw new Error("Not implemented");
+    async createPlaylist(
+      name: string,
+      options?: CreatePlaylistOptions,
+    ): Promise<Playlist> {
+      try {
+        // Get current user ID
+        const currentUser = await sdk.currentUser.profile();
+        const userId = currentUser.id;
+
+        // Build request object
+        const request = {
+          name,
+          description: options?.description,
+          public: options?.public,
+          collaborative: options?.collaborative,
+        };
+
+        // Create playlist
+        const spotifyPlaylist = await sdk.playlists.createPlaylist(
+          userId,
+          request,
+        );
+
+        // Transform to musix.js Playlist type
+        return transformPlaylist(
+          spotifyPlaylist as SpotifyPlaylist<SpotifyTrack>,
+        );
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid or expired access token");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+
+        // Handle network errors (errors without status property)
+        if (error instanceof Error) {
+          throw new NetworkError(error.message, error);
+        }
+
+        // Handle non-Error objects
+        throw new NetworkError(String(error));
+      }
     },
     async updatePlaylistDetails() {
       throw new Error("Not implemented");

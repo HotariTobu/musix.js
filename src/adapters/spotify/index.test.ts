@@ -15575,3 +15575,721 @@ describe("getTopTracks", () => {
     });
   });
 });
+
+// CH-033: Create Playlist
+describe("createPlaylist", () => {
+  describe("AC-047: Create Playlist [CH-033]", () => {
+    test("should return newly created Playlist object when called with name only", async () => {
+      // Given: User is authenticated
+      const mockCreatedPlaylist = {
+        id: "playlist-123",
+        name: "My Playlist",
+        description: null,
+        owner: {
+          id: "user-123",
+          display_name: "Test User",
+          external_urls: {
+            spotify: "https://open.spotify.com/user/user-123",
+          },
+        },
+        tracks: {
+          items: [],
+          total: 0,
+          limit: 100,
+          offset: 0,
+          href: "https://api.spotify.com/v1/playlists/playlist-123/tracks",
+        },
+        images: [],
+        external_urls: {
+          spotify: "https://open.spotify.com/playlist/playlist-123",
+        },
+        public: true,
+        collaborative: false,
+        snapshot_id: "snapshot-123",
+      };
+
+      const createPlaylistMock = mock(
+        async (userId: string, details: unknown) => mockCreatedPlaylist,
+      );
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        playlists: {
+          createPlaylist: createPlaylistMock,
+          getPlaylist: mock(async (id: string) => mockCreatedPlaylist),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public", "playlist-modify-private"],
+      });
+
+      // When: createPlaylist("My Playlist") is called
+      const result = await adapter.createPlaylist("My Playlist");
+
+      // Then: Returns newly created Playlist object
+      expect(result).toBeObject();
+      expect(result.id).toBe("playlist-123");
+      expect(result.name).toBe("My Playlist");
+      expect(result.description).toBeNull();
+      expect(result.owner).toBeDefined();
+      expect(result.owner.id).toBe("user-123");
+      expect(result.owner.displayName).toBe("Test User");
+      expect(result.tracks).toBeArray();
+      expect(result.tracks).toHaveLength(0);
+      expect(result.images).toBeArray();
+      expect(result.externalUrl).toBe(
+        "https://open.spotify.com/playlist/playlist-123",
+      );
+
+      // Verify SDK was called with current user ID
+      expect(createPlaylistMock).toHaveBeenCalledTimes(1);
+    });
+
+    test("should create playlist in user's library", async () => {
+      // Given: User is authenticated
+      const mockUserId = "user-456";
+      const mockPlaylistName = "Road Trip Mix";
+
+      const mockCreatedPlaylist = {
+        id: "playlist-456",
+        name: mockPlaylistName,
+        description: null,
+        owner: {
+          id: mockUserId,
+          display_name: "Road Tripper",
+          external_urls: {
+            spotify: "https://open.spotify.com/user/user-456",
+          },
+        },
+        tracks: {
+          items: [],
+          total: 0,
+          limit: 100,
+          offset: 0,
+          href: "https://api.spotify.com/v1/playlists/playlist-456/tracks",
+        },
+        images: [],
+        external_urls: {
+          spotify: "https://open.spotify.com/playlist/playlist-456",
+        },
+        public: true,
+        collaborative: false,
+        snapshot_id: "snapshot-456",
+      };
+
+      const createPlaylistMock = mock(
+        async (userId: string, details: unknown) => {
+          // Verify the playlist is created for the authenticated user
+          expect(userId).toBe(mockUserId);
+          return mockCreatedPlaylist;
+        },
+      );
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: mockUserId,
+            display_name: "Road Tripper",
+            external_urls: {
+              spotify: `https://open.spotify.com/user/${mockUserId}`,
+            },
+          })),
+        },
+        playlists: {
+          createPlaylist: createPlaylistMock,
+          getPlaylist: mock(async (id: string) => mockCreatedPlaylist),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: createPlaylist is called
+      const result = await adapter.createPlaylist(mockPlaylistName);
+
+      // Then: Playlist is created in user's library (verified in mock)
+      expect(result.owner.id).toBe(mockUserId);
+      expect(createPlaylistMock).toHaveBeenCalled();
+    });
+  });
+
+  describe("AC-048: Create Playlist with Options [CH-033]", () => {
+    test("should create playlist with description option", async () => {
+      // Given: User is authenticated
+      const mockCreatedPlaylist = {
+        id: "playlist-789",
+        name: "My Playlist",
+        description: "My awesome playlist description",
+        owner: {
+          id: "user-789",
+          display_name: "Playlist Creator",
+          external_urls: {
+            spotify: "https://open.spotify.com/user/user-789",
+          },
+        },
+        tracks: {
+          items: [],
+          total: 0,
+          limit: 100,
+          offset: 0,
+          href: "https://api.spotify.com/v1/playlists/playlist-789/tracks",
+        },
+        images: [],
+        external_urls: {
+          spotify: "https://open.spotify.com/playlist/playlist-789",
+        },
+        public: true,
+        collaborative: false,
+        snapshot_id: "snapshot-789",
+      };
+
+      const createPlaylistMock = mock(
+        async (
+          userId: string,
+          details: {
+            name: string;
+            description?: string;
+            public?: boolean;
+            collaborative?: boolean;
+          },
+        ) => {
+          // Verify description is passed
+          expect(details.description).toBe("My awesome playlist description");
+          return mockCreatedPlaylist;
+        },
+      );
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-789",
+            display_name: "Playlist Creator",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-789",
+            },
+          })),
+        },
+        playlists: {
+          createPlaylist: createPlaylistMock,
+          getPlaylist: mock(async (id: string) => mockCreatedPlaylist),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: createPlaylist is called with description option
+      const result = await adapter.createPlaylist("My Playlist", {
+        description: "My awesome playlist description",
+      });
+
+      // Then: Playlist is created with specified description
+      expect(result.description).toBe("My awesome playlist description");
+      expect(createPlaylistMock).toHaveBeenCalled();
+    });
+
+    test("should create private playlist when public: false option is provided", async () => {
+      // Given: User is authenticated
+      const mockCreatedPlaylist = {
+        id: "playlist-private",
+        name: "My Private Playlist",
+        description: "Secret tunes",
+        owner: {
+          id: "user-private",
+          display_name: "Private User",
+          external_urls: {
+            spotify: "https://open.spotify.com/user/user-private",
+          },
+        },
+        tracks: {
+          items: [],
+          total: 0,
+          limit: 100,
+          offset: 0,
+          href: "https://api.spotify.com/v1/playlists/playlist-private/tracks",
+        },
+        images: [],
+        external_urls: {
+          spotify: "https://open.spotify.com/playlist/playlist-private",
+        },
+        public: false,
+        collaborative: false,
+        snapshot_id: "snapshot-private",
+      };
+
+      const createPlaylistMock = mock(
+        async (
+          userId: string,
+          details: {
+            name: string;
+            description?: string;
+            public?: boolean;
+            collaborative?: boolean;
+          },
+        ) => {
+          // Verify public: false is passed
+          expect(details.public).toBe(false);
+          return mockCreatedPlaylist;
+        },
+      );
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-private",
+            display_name: "Private User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-private",
+            },
+          })),
+        },
+        playlists: {
+          createPlaylist: createPlaylistMock,
+          getPlaylist: mock(async (id: string) => mockCreatedPlaylist),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-private"],
+      });
+
+      // When: createPlaylist is called with public: false
+      const result = await adapter.createPlaylist("My Private Playlist", {
+        description: "Secret tunes",
+        public: false,
+      });
+
+      // Then: Playlist is created as private
+      expect(createPlaylistMock).toHaveBeenCalled();
+    });
+
+    test("should create playlist with all options specified", async () => {
+      // Given: User is authenticated
+      const mockCreatedPlaylist = {
+        id: "playlist-full",
+        name: "Full Options Playlist",
+        description: "Testing all options",
+        owner: {
+          id: "user-full",
+          display_name: "Full Options User",
+          external_urls: {
+            spotify: "https://open.spotify.com/user/user-full",
+          },
+        },
+        tracks: {
+          items: [],
+          total: 0,
+          limit: 100,
+          offset: 0,
+          href: "https://api.spotify.com/v1/playlists/playlist-full/tracks",
+        },
+        images: [],
+        external_urls: {
+          spotify: "https://open.spotify.com/playlist/playlist-full",
+        },
+        public: false,
+        collaborative: true,
+        snapshot_id: "snapshot-full",
+      };
+
+      const createPlaylistMock = mock(
+        async (
+          userId: string,
+          details: {
+            name: string;
+            description?: string;
+            public?: boolean;
+            collaborative?: boolean;
+          },
+        ) => {
+          // Verify all options are passed
+          expect(details.name).toBe("Full Options Playlist");
+          expect(details.description).toBe("Testing all options");
+          expect(details.public).toBe(false);
+          expect(details.collaborative).toBe(true);
+          return mockCreatedPlaylist;
+        },
+      );
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-full",
+            display_name: "Full Options User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-full",
+            },
+          })),
+        },
+        playlists: {
+          createPlaylist: createPlaylistMock,
+          getPlaylist: mock(async (id: string) => mockCreatedPlaylist),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-private"],
+      });
+
+      // When: createPlaylist is called with all options
+      const result = await adapter.createPlaylist("Full Options Playlist", {
+        description: "Testing all options",
+        public: false,
+        collaborative: true,
+      });
+
+      // Then: Playlist is created with all specified options
+      expect(result.id).toBe("playlist-full");
+      expect(result.name).toBe("Full Options Playlist");
+      expect(result.description).toBe("Testing all options");
+      expect(createPlaylistMock).toHaveBeenCalled();
+    });
+  });
+
+  describe("Return Type Validation [CH-033]", () => {
+    test("should return Playlist object with all required fields", async () => {
+      // Given: User is authenticated
+      const mockTrack = {
+        id: "track-1",
+        name: "Track Name",
+        duration_ms: 180000,
+        preview_url: "https://p.scdn.co/mp3-preview/track1",
+        external_urls: {
+          spotify: "https://open.spotify.com/track/track-1",
+        },
+        artists: [
+          {
+            id: "artist-1",
+            name: "Artist Name",
+            external_urls: {
+              spotify: "https://open.spotify.com/artist/artist-1",
+            },
+          },
+        ],
+        album: {
+          id: "album-1",
+          name: "Album Name",
+          release_date: "2024-01-01",
+          total_tracks: 12,
+          images: [
+            {
+              url: "https://i.scdn.co/image/album1",
+              width: 640,
+              height: 640,
+            },
+          ],
+          external_urls: {
+            spotify: "https://open.spotify.com/album/album-1",
+          },
+          artists: [
+            {
+              id: "artist-1",
+              name: "Artist Name",
+              external_urls: {
+                spotify: "https://open.spotify.com/artist/artist-1",
+              },
+            },
+          ],
+        },
+      };
+
+      const mockCreatedPlaylist = {
+        id: "playlist-complete",
+        name: "Complete Playlist",
+        description: "A complete playlist with tracks",
+        owner: {
+          id: "user-complete",
+          display_name: "Complete User",
+          external_urls: {
+            spotify: "https://open.spotify.com/user/user-complete",
+          },
+        },
+        tracks: {
+          items: [{ track: mockTrack, added_at: "2024-01-01T00:00:00Z" }],
+          total: 1,
+          limit: 100,
+          offset: 0,
+          href: "https://api.spotify.com/v1/playlists/playlist-complete/tracks",
+        },
+        images: [
+          { url: "https://i.scdn.co/image/playlist1", width: 640, height: 640 },
+        ],
+        external_urls: {
+          spotify: "https://open.spotify.com/playlist/playlist-complete",
+        },
+        public: true,
+        collaborative: false,
+        snapshot_id: "snapshot-complete",
+      };
+
+      const createPlaylistMock = mock(
+        async (userId: string, details: unknown) => mockCreatedPlaylist,
+      );
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-complete",
+            display_name: "Complete User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-complete",
+            },
+          })),
+        },
+        playlists: {
+          createPlaylist: createPlaylistMock,
+          getPlaylist: mock(async (id: string) => mockCreatedPlaylist),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: createPlaylist is called
+      const result = await adapter.createPlaylist("Complete Playlist", {
+        description: "A complete playlist with tracks",
+      });
+
+      // Then: Result matches Playlist interface
+      expect(result).toBeDefined();
+      expect(result.id).toBe("playlist-complete");
+      expect(result.name).toBe("Complete Playlist");
+      expect(result.description).toBe("A complete playlist with tracks");
+      expect(result.owner).toBeDefined();
+      expect(result.owner.id).toBe("user-complete");
+      expect(result.owner.displayName).toBe("Complete User");
+      expect(result.tracks).toBeArray();
+      expect(result.tracks).toHaveLength(1);
+      expect(result.tracks[0]).toBeDefined();
+      expect(result.tracks[0].id).toBe("track-1");
+      expect(result.tracks[0].name).toBe("Track Name");
+      expect(result.images).toBeArray();
+      expect(result.images).toHaveLength(1);
+      expect(result.images[0].url).toBe("https://i.scdn.co/image/playlist1");
+      expect(result.externalUrl).toBe(
+        "https://open.spotify.com/playlist/playlist-complete",
+      );
+    });
+  });
+
+  describe("Error Handling [CH-033]", () => {
+    test("should throw AuthenticationError when user is not authenticated (401)", async () => {
+      // Given: Invalid authentication
+      const createPlaylistMock = mock(async () => {
+        const error = new Error("Unauthorized") as Error & { status: number };
+        error.status = 401;
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        playlists: {
+          createPlaylist: createPlaylistMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: createPlaylist is called without valid authentication
+      // Then: AuthenticationError is thrown
+      await expect(adapter.createPlaylist("Test Playlist")).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should throw RateLimitError when rate limit is exceeded (429)", async () => {
+      // Given: Rate limit exceeded response
+      const createPlaylistMock = mock(async () => {
+        const error = new Error("Too Many Requests") as Error & {
+          status: number;
+          headers: Record<string, string>;
+        };
+        error.status = 429;
+        error.headers = { "retry-after": "60" };
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        playlists: {
+          createPlaylist: createPlaylistMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: createPlaylist is called and rate limit is exceeded
+      // Then: RateLimitError is thrown with correct retryAfter value
+      try {
+        await adapter.createPlaylist("Test Playlist");
+        expect.unreachable("Should have thrown RateLimitError");
+      } catch (error) {
+        expect(error).toBeInstanceOf(RateLimitError);
+        expect((error as RateLimitError).retryAfter).toBe(60);
+      }
+    });
+
+    test("should throw NetworkError when network error occurs", async () => {
+      // Given: Network error
+      const createPlaylistMock = mock(async () => {
+        throw new Error("Network error: connection refused");
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        playlists: {
+          createPlaylist: createPlaylistMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["playlist-modify-public"],
+      });
+
+      // When: createPlaylist is called and network error occurs
+      // Then: NetworkError is thrown
+      await expect(adapter.createPlaylist("Test Playlist")).rejects.toThrow(
+        NetworkError,
+      );
+    });
+  });
+});
