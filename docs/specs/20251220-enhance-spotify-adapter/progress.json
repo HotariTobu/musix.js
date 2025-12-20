@@ -31,7 +31,7 @@
     { "id": "CH-027", "passes": true },
     { "id": "CH-028", "passes": true },
     { "id": "CH-029", "passes": true },
-    { "id": "CH-030", "passes": false },
+    { "id": "CH-030", "passes": true },
     { "id": "CH-031", "passes": false },
     { "id": "CH-032", "passes": false },
     { "id": "CH-033", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "Session ended 2025-12-21. 29/42 requirements passing. CH-029 (getNewReleases) implemented with full test coverage including success/pagination/error cases. Next session should start with CH-030 (getRecentlyPlayed) - implement via sdk.player.getRecentlyPlayedTracks(). Remaining: Discovery (CH-030~032), Playlist Management (CH-033~037), Extended Playback Control (CH-038~042)."
+  "notes": "Session 2025-12-21. 30/42 requirements passing. CH-030 (getRecentlyPlayed) implemented with full test coverage including success/pagination/empty results/error cases. Next session should start with CH-031 (getTopTracks) - implement via sdk.currentUser.topItems('tracks'). Remaining: Discovery (CH-031~032), Playlist Management (CH-033~037), Extended Playback Control (CH-038~042)."
 }
