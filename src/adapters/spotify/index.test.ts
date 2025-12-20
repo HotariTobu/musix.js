@@ -8790,4 +8790,522 @@ describe("createSpotifyUserAdapter", () => {
       ).rejects.toThrow(NoActiveDeviceError);
     });
   });
+
+  describe("AC-027: Get Saved Tracks [CH-020]", () => {
+    test("should return PaginatedResult<Track> with user's saved tracks", async () => {
+      // Given: User is authenticated and has saved tracks
+      const mockSavedTracks = {
+        items: [
+          {
+            added_at: "2024-01-15T10:00:00Z",
+            track: {
+              id: "track-001",
+              name: "Bohemian Rhapsody",
+              duration_ms: 354947,
+              preview_url: "https://p.scdn.co/mp3-preview/track001",
+              external_urls: {
+                spotify: "https://open.spotify.com/track/track-001",
+              },
+              artists: [
+                {
+                  id: "artist-001",
+                  name: "Queen",
+                  external_urls: {
+                    spotify: "https://open.spotify.com/artist/artist-001",
+                  },
+                },
+              ],
+              album: {
+                id: "album-001",
+                name: "A Night at the Opera",
+                release_date: "1975-11-21",
+                total_tracks: 12,
+                images: [
+                  {
+                    url: "https://i.scdn.co/image/album001",
+                    width: 640,
+                    height: 640,
+                  },
+                ],
+                external_urls: {
+                  spotify: "https://open.spotify.com/album/album-001",
+                },
+                artists: [
+                  {
+                    id: "artist-001",
+                    name: "Queen",
+                    external_urls: {
+                      spotify: "https://open.spotify.com/artist/artist-001",
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          {
+            added_at: "2024-01-16T14:30:00Z",
+            track: {
+              id: "track-002",
+              name: "Stairway to Heaven",
+              duration_ms: 482830,
+              preview_url: "https://p.scdn.co/mp3-preview/track002",
+              external_urls: {
+                spotify: "https://open.spotify.com/track/track-002",
+              },
+              artists: [
+                {
+                  id: "artist-002",
+                  name: "Led Zeppelin",
+                  external_urls: {
+                    spotify: "https://open.spotify.com/artist/artist-002",
+                  },
+                },
+              ],
+              album: {
+                id: "album-002",
+                name: "Led Zeppelin IV",
+                release_date: "1971-11-08",
+                total_tracks: 8,
+                images: [
+                  {
+                    url: "https://i.scdn.co/image/album002",
+                    width: 640,
+                    height: 640,
+                  },
+                ],
+                external_urls: {
+                  spotify: "https://open.spotify.com/album/album-002",
+                },
+                artists: [
+                  {
+                    id: "artist-002",
+                    name: "Led Zeppelin",
+                    external_urls: {
+                      spotify: "https://open.spotify.com/artist/artist-002",
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+        total: 150,
+        limit: 20,
+        offset: 0,
+      };
+
+      const savedTracksMock = mock(async () => mockSavedTracks);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          tracks: {
+            savedTracks: savedTracksMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-read"],
+      });
+
+      // When: getSavedTracks() is called
+      const result = await adapter.getSavedTracks();
+
+      // Then: Returns PaginatedResult<Track> with user's saved tracks
+      expect(result).toBeObject();
+      expect(result.items).toBeArray();
+      expect(result.items).toHaveLength(2);
+      expect(result.total).toBe(150);
+      expect(result.limit).toBe(20);
+      expect(result.offset).toBe(0);
+      expect(result.hasNext).toBe(true); // offset (0) + items.length (2) < total (150)
+
+      // Verify first track
+      expect(result.items[0].id).toBe("track-001");
+      expect(result.items[0].name).toBe("Bohemian Rhapsody");
+      expect(result.items[0].durationMs).toBe(354947);
+      expect(result.items[0].artists[0].name).toBe("Queen");
+      expect(result.items[0].album.name).toBe("A Night at the Opera");
+
+      // Verify second track
+      expect(result.items[1].id).toBe("track-002");
+      expect(result.items[1].name).toBe("Stairway to Heaven");
+      expect(result.items[1].durationMs).toBe(482830);
+      expect(result.items[1].artists[0].name).toBe("Led Zeppelin");
+      expect(result.items[1].album.name).toBe("Led Zeppelin IV");
+
+      // Verify SDK method was called with default parameters
+      expect(savedTracksMock).toHaveBeenCalledWith(20, 0);
+    });
+
+    test("should return saved tracks with custom limit and offset", async () => {
+      // Given: User is authenticated
+      const mockSavedTracks = {
+        items: [
+          {
+            added_at: "2024-01-20T10:00:00Z",
+            track: {
+              id: "track-101",
+              name: "Test Track 101",
+              duration_ms: 240000,
+              preview_url: "https://p.scdn.co/mp3-preview/track101",
+              external_urls: {
+                spotify: "https://open.spotify.com/track/track-101",
+              },
+              artists: [
+                {
+                  id: "artist-101",
+                  name: "Test Artist",
+                  external_urls: {
+                    spotify: "https://open.spotify.com/artist/artist-101",
+                  },
+                },
+              ],
+              album: {
+                id: "album-101",
+                name: "Test Album",
+                release_date: "2024-01-01",
+                total_tracks: 10,
+                images: [
+                  {
+                    url: "https://i.scdn.co/image/album101",
+                    width: 640,
+                    height: 640,
+                  },
+                ],
+                external_urls: {
+                  spotify: "https://open.spotify.com/album/album-101",
+                },
+                artists: [
+                  {
+                    id: "artist-101",
+                    name: "Test Artist",
+                    external_urls: {
+                      spotify: "https://open.spotify.com/artist/artist-101",
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+        total: 150,
+        limit: 10,
+        offset: 50,
+      };
+
+      const savedTracksMock = mock(async () => mockSavedTracks);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          tracks: {
+            savedTracks: savedTracksMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-read"],
+      });
+
+      // When: getSavedTracks({ limit: 10, offset: 50 }) is called
+      const result = await adapter.getSavedTracks({ limit: 10, offset: 50 });
+
+      // Then: Returns results starting from offset 50 with limit 10
+      expect(result.items).toHaveLength(1);
+      expect(result.total).toBe(150);
+      expect(result.limit).toBe(10);
+      expect(result.offset).toBe(50);
+      expect(result.hasNext).toBe(true); // offset (50) + items.length (1) < total (150)
+
+      // Verify SDK method was called with custom parameters
+      expect(savedTracksMock).toHaveBeenCalledWith(10, 50);
+    });
+
+    test("should correctly calculate hasNext as true when more tracks exist", async () => {
+      // Given: User is authenticated with pagination scenario where more tracks exist
+      const mockSavedTracks = {
+        items: [
+          {
+            added_at: "2024-01-20T10:00:00Z",
+            track: {
+              id: "track-101",
+              name: "Test Track",
+              duration_ms: 240000,
+              preview_url: "https://p.scdn.co/mp3-preview/track101",
+              external_urls: {
+                spotify: "https://open.spotify.com/track/track-101",
+              },
+              artists: [
+                {
+                  id: "artist-101",
+                  name: "Test Artist",
+                  external_urls: {
+                    spotify: "https://open.spotify.com/artist/artist-101",
+                  },
+                },
+              ],
+              album: {
+                id: "album-101",
+                name: "Test Album",
+                release_date: "2024-01-01",
+                total_tracks: 10,
+                images: [
+                  {
+                    url: "https://i.scdn.co/image/album101",
+                    width: 640,
+                    height: 640,
+                  },
+                ],
+                external_urls: {
+                  spotify: "https://open.spotify.com/album/album-101",
+                },
+                artists: [
+                  {
+                    id: "artist-101",
+                    name: "Test Artist",
+                    external_urls: {
+                      spotify: "https://open.spotify.com/artist/artist-101",
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+        total: 100,
+        limit: 20,
+        offset: 40,
+      };
+
+      const savedTracksMock = mock(async () => mockSavedTracks);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          tracks: {
+            savedTracks: savedTracksMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-read"],
+      });
+
+      // When: getSavedTracks() is called
+      const result = await adapter.getSavedTracks({ limit: 20, offset: 40 });
+
+      // Then: hasNext is true because offset (40) + items.length (1) = 41 < total (100)
+      expect(result.hasNext).toBe(true);
+      expect(result.offset).toBe(40);
+      expect(result.total).toBe(100);
+      expect(result.items).toHaveLength(1);
+    });
+
+    test("should correctly calculate hasNext as false when no more tracks exist", async () => {
+      // Given: User is authenticated at the end of pagination
+      const mockSavedTracks = {
+        items: [
+          {
+            added_at: "2024-01-20T10:00:00Z",
+            track: {
+              id: "track-150",
+              name: "Last Track",
+              duration_ms: 240000,
+              preview_url: "https://p.scdn.co/mp3-preview/track150",
+              external_urls: {
+                spotify: "https://open.spotify.com/track/track-150",
+              },
+              artists: [
+                {
+                  id: "artist-101",
+                  name: "Test Artist",
+                  external_urls: {
+                    spotify: "https://open.spotify.com/artist/artist-101",
+                  },
+                },
+              ],
+              album: {
+                id: "album-101",
+                name: "Test Album",
+                release_date: "2024-01-01",
+                total_tracks: 10,
+                images: [
+                  {
+                    url: "https://i.scdn.co/image/album101",
+                    width: 640,
+                    height: 640,
+                  },
+                ],
+                external_urls: {
+                  spotify: "https://open.spotify.com/album/album-101",
+                },
+                artists: [
+                  {
+                    id: "artist-101",
+                    name: "Test Artist",
+                    external_urls: {
+                      spotify: "https://open.spotify.com/artist/artist-101",
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+        total: 150,
+        limit: 20,
+        offset: 149,
+      };
+
+      const savedTracksMock = mock(async () => mockSavedTracks);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          tracks: {
+            savedTracks: savedTracksMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-read"],
+      });
+
+      // When: getSavedTracks() is called at the last page
+      const result = await adapter.getSavedTracks({ limit: 20, offset: 149 });
+
+      // Then: hasNext is false because offset (149) + items.length (1) = 150 >= total (150)
+      expect(result.hasNext).toBe(false);
+      expect(result.offset).toBe(149);
+      expect(result.total).toBe(150);
+      expect(result.items).toHaveLength(1);
+    });
+
+    test("should return empty items array when user has no saved tracks", async () => {
+      // Given: User is authenticated but has no saved tracks
+      const mockSavedTracks = {
+        items: [],
+        total: 0,
+        limit: 20,
+        offset: 0,
+      };
+
+      const savedTracksMock = mock(async () => mockSavedTracks);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          tracks: {
+            savedTracks: savedTracksMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-read"],
+      });
+
+      // When: getSavedTracks() is called
+      const result = await adapter.getSavedTracks();
+
+      // Then: Returns empty PaginatedResult
+      expect(result.items).toBeArray();
+      expect(result.items).toHaveLength(0);
+      expect(result.total).toBe(0);
+      expect(result.limit).toBe(20);
+      expect(result.offset).toBe(0);
+      expect(result.hasNext).toBe(false);
+      expect(savedTracksMock).toHaveBeenCalledWith(20, 0);
+    });
+  });
 });

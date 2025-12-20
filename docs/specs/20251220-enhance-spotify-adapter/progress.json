@@ -21,7 +21,7 @@
     { "id": "CH-017", "passes": true },
     { "id": "CH-018", "passes": true },
     { "id": "CH-019", "passes": true },
-    { "id": "CH-020", "passes": false },
+    { "id": "CH-020", "passes": true },
     { "id": "CH-021", "passes": false },
     { "id": "CH-022", "passes": false },
     { "id": "CH-023", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "CH-019 (transferPlayback) complete. Implemented with AC-026 tests (5 total). Accepts deviceId and optional play parameter. Calls sdk.player.transferPlayback([deviceId], play ?? false). Handles 403 -> PremiumRequiredError, 404 -> NoActiveDeviceError. Next session should continue with CH-020 (getSavedTracks)."
+  "notes": "CH-020 (getSavedTracks) complete. Implemented with AC-027 tests (5 total). Returns PaginatedResult<Track> with items, total, limit, offset, hasNext. Default limit 20, offset 0. Calls sdk.currentUser.tracks.savedTracks(limit, offset). Transforms saved tracks using transformTrack(). Next session should continue with CH-021 (saveTrack/removeSavedTrack)."
 }
