@@ -1,7 +1,15 @@
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 import type {
+  Image as SpotifyImage,
+  SimplifiedAlbum as SpotifySimplifiedAlbum,
+  SimplifiedArtist as SpotifySimplifiedArtist,
+  Track as SpotifyTrack,
+} from "@spotify/web-api-ts-sdk";
+import { NotFoundError } from "../../core/errors";
+import type {
   Album,
   Artist,
+  Image,
   Playlist,
   SearchOptions,
   SearchResult,
@@ -9,6 +17,66 @@ import type {
   SpotifyConfig,
   Track,
 } from "../../core/types";
+
+/**
+ * Transforms a Spotify SDK Image to musix.js Image.
+ * @param image - Spotify SDK Image
+ * @returns musix.js Image
+ */
+function transformImage(image: SpotifyImage): Image {
+  return {
+    url: image.url,
+    width: image.width ?? null,
+    height: image.height ?? null,
+  };
+}
+
+/**
+ * Transforms a Spotify SDK SimplifiedArtist to musix.js Artist.
+ * @param artist - Spotify SDK SimplifiedArtist
+ * @returns musix.js Artist
+ */
+function transformSimplifiedArtist(artist: SpotifySimplifiedArtist): Artist {
+  return {
+    id: artist.id,
+    name: artist.name,
+    externalUrl: artist.external_urls.spotify,
+  };
+}
+
+/**
+ * Transforms a Spotify SDK SimplifiedAlbum to musix.js Album.
+ * @param album - Spotify SDK SimplifiedAlbum
+ * @returns musix.js Album
+ */
+function transformSimplifiedAlbum(album: SpotifySimplifiedAlbum): Album {
+  return {
+    id: album.id,
+    name: album.name,
+    artists: album.artists.map(transformSimplifiedArtist),
+    releaseDate: album.release_date,
+    totalTracks: album.total_tracks,
+    images: album.images.map(transformImage),
+    externalUrl: album.external_urls.spotify,
+  };
+}
+
+/**
+ * Transforms a Spotify SDK Track to musix.js Track.
+ * @param track - Spotify SDK Track
+ * @returns musix.js Track
+ */
+function transformTrack(track: SpotifyTrack): Track {
+  return {
+    id: track.id,
+    name: track.name,
+    artists: track.artists.map(transformSimplifiedArtist),
+    album: transformSimplifiedAlbum(track.album),
+    durationMs: track.duration_ms,
+    previewUrl: track.preview_url,
+    externalUrl: track.external_urls.spotify,
+  };
+}
 
 /**
  * Creates a Spotify adapter instance using the official Spotify Web API SDK.
@@ -41,9 +109,22 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
      * Retrieves a track by its Spotify ID.
      * @param id - The Spotify track ID
      * @returns Promise resolving to Track object
+     * @throws {NotFoundError} If the track does not exist
      */
     async getTrack(id: string): Promise<Track> {
-      throw new Error("Not implemented");
+      try {
+        const spotifyTrack = await sdk.tracks.get(id);
+        return transformTrack(spotifyTrack);
+      } catch (error) {
+        // Check if it's a 404 error (track not found)
+        if (error && typeof error === "object" && "status" in error) {
+          if (error.status === 404) {
+            throw new NotFoundError("track", id);
+          }
+        }
+        // Re-throw any other errors
+        throw error;
+      }
     },
 
     /**

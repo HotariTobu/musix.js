@@ -3,7 +3,7 @@
   "lastUpdated": "2025-12-20",
   "requirements": [
     { "id": "FR-001", "passes": true },
-    { "id": "FR-002", "passes": false },
+    { "id": "FR-002", "passes": true },
     { "id": "FR-003", "passes": false },
     { "id": "FR-004", "passes": false },
     { "id": "FR-005", "passes": false },
@@ -13,5 +13,5 @@
     { "id": "NFR-003", "passes": false }
   ],
   "blockers": [],
-  "notes": "FR-001 complete. createSpotifyAdapter factory implemented with @spotify/web-api-ts-sdk. Methods are stubs. Next: FR-002 (getTrack)."
+  "notes": "FR-002 complete. getTrack implemented with SDK integration and type transformation. Next: FR-003 (searchTracks)."
 }
