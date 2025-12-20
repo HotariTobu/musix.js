@@ -18509,4 +18509,1091 @@ describe("getPlaylistTracks", () => {
       await expect(adapter.setVolume(50)).rejects.toThrow(RateLimitError);
     });
   });
+
+  describe("AC-055: Set Shuffle [CH-039]", () => {
+    test("should enable shuffle mode when setShuffle(true) is called", async () => {
+      // Given: User is authenticated with Premium, playback is active
+      const togglePlaybackShuffleMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          togglePlaybackShuffle: togglePlaybackShuffleMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: setShuffle(true) is called
+      await adapter.setShuffle(true);
+
+      // Then: SDK togglePlaybackShuffle is called with true and empty deviceId
+      expect(togglePlaybackShuffleMock).toHaveBeenCalledWith(true, "");
+    });
+
+    test("should disable shuffle mode when setShuffle(false) is called", async () => {
+      // Given: User is authenticated with Premium, playback is active
+      const togglePlaybackShuffleMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          togglePlaybackShuffle: togglePlaybackShuffleMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: setShuffle(false) is called
+      await adapter.setShuffle(false);
+
+      // Then: SDK togglePlaybackShuffle is called with false and empty deviceId
+      expect(togglePlaybackShuffleMock).toHaveBeenCalledWith(false, "");
+    });
+
+    test("should throw PremiumRequiredError when user has no Premium", async () => {
+      // Given: User is authenticated without Premium (403 Forbidden)
+      const error = new Error("Forbidden") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 403;
+      error.headers = {};
+
+      const togglePlaybackShuffleMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          togglePlaybackShuffle: togglePlaybackShuffleMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: setShuffle is called
+      // Then: PremiumRequiredError is thrown
+      await expect(adapter.setShuffle(true)).rejects.toThrow(
+        PremiumRequiredError,
+      );
+    });
+
+    test("should throw NoActiveDeviceError when no device is active", async () => {
+      // Given: User has Premium but no active device (404)
+      const error = new Error("No active device found") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 404;
+      error.headers = {};
+
+      const togglePlaybackShuffleMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          togglePlaybackShuffle: togglePlaybackShuffleMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: setShuffle is called
+      // Then: NoActiveDeviceError is thrown
+      await expect(adapter.setShuffle(true)).rejects.toThrow(
+        NoActiveDeviceError,
+      );
+    });
+
+    test("should throw RateLimitError when rate limited", async () => {
+      // Given: API rate limit has been exceeded (429 response)
+      const error = new Error("Rate limit exceeded") as Error & {
+        status: number;
+        headers?: { "retry-after": string };
+      };
+      error.status = 429;
+      error.headers = { "retry-after": "60" };
+
+      const togglePlaybackShuffleMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          togglePlaybackShuffle: togglePlaybackShuffleMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: setShuffle is called during rate limit
+      // Then: RateLimitError is thrown
+      await expect(adapter.setShuffle(true)).rejects.toThrow(RateLimitError);
+    });
+  });
+
+  describe("AC-056: Set Repeat [CH-040]", () => {
+    test('should set repeat mode to "off" when setRepeat("off") is called', async () => {
+      // Given: User is authenticated with Premium, playback is active
+      const setRepeatModeMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          setRepeatMode: setRepeatModeMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: [],
+      });
+
+      // When: setRepeat("off") is called
+      await adapter.setRepeat("off");
+
+      // Then: SDK setRepeatMode is called with "off" and empty deviceId
+      expect(setRepeatModeMock).toHaveBeenCalledWith("off", "");
+    });
+
+    test('should set repeat mode to "track" when setRepeat("track") is called', async () => {
+      // Given: User is authenticated with Premium, playback is active
+      const setRepeatModeMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          setRepeatMode: setRepeatModeMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: [],
+      });
+
+      // When: setRepeat("track") is called
+      await adapter.setRepeat("track");
+
+      // Then: SDK setRepeatMode is called with "track" and empty deviceId
+      expect(setRepeatModeMock).toHaveBeenCalledWith("track", "");
+    });
+
+    test('should set repeat mode to "context" when setRepeat("context") is called', async () => {
+      // Given: User is authenticated with Premium, playback is active
+      const setRepeatModeMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          setRepeatMode: setRepeatModeMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: [],
+      });
+
+      // When: setRepeat("context") is called
+      await adapter.setRepeat("context");
+
+      // Then: SDK setRepeatMode is called with "context" and empty deviceId
+      expect(setRepeatModeMock).toHaveBeenCalledWith("context", "");
+    });
+
+    test("should throw PremiumRequiredError when user has no Premium", async () => {
+      // Given: User is authenticated without Premium (403 Forbidden)
+      const error = new Error("Forbidden") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 403;
+      error.headers = {};
+
+      const setRepeatModeMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          setRepeatMode: setRepeatModeMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: [],
+      });
+
+      // When: setRepeat is called
+      // Then: PremiumRequiredError is thrown
+      await expect(adapter.setRepeat("track")).rejects.toThrow(
+        PremiumRequiredError,
+      );
+    });
+
+    test("should throw NoActiveDeviceError when no device is active", async () => {
+      // Given: User has Premium but no active device (404)
+      const error = new Error("No active device found") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 404;
+      error.headers = {};
+
+      const setRepeatModeMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          setRepeatMode: setRepeatModeMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: [],
+      });
+
+      // When: setRepeat is called
+      // Then: NoActiveDeviceError is thrown
+      await expect(adapter.setRepeat("track")).rejects.toThrow(
+        NoActiveDeviceError,
+      );
+    });
+
+    test("should throw RateLimitError when rate limited", async () => {
+      // Given: API rate limit has been exceeded (429 response)
+      const error = new Error("Rate limit exceeded") as Error & {
+        status: number;
+        headers?: { "retry-after": string };
+      };
+      error.status = 429;
+      error.headers = { "retry-after": "60" };
+
+      const setRepeatModeMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          setRepeatMode: setRepeatModeMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: [],
+      });
+
+      // When: setRepeat is called during rate limit
+      // Then: RateLimitError is thrown
+      await expect(adapter.setRepeat("track")).rejects.toThrow(RateLimitError);
+    });
+  });
+
+  describe("AC-057: Get Queue [CH-041]", () => {
+    test("should return QueueState with currentlyPlaying and queue array", async () => {
+      // Given: User is authenticated and has active playback with queue
+      const mockQueueData = {
+        currently_playing: {
+          id: "4iV5W9uYEdYUVa79Axb7Rh",
+          name: "Hotel California",
+          duration_ms: 391376,
+          preview_url: "https://p.scdn.co/mp3-preview/abc123",
+          external_urls: {
+            spotify: "https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh",
+          },
+          artists: [
+            {
+              id: "0ECwFtbIWEVNwjlrfc6xoL",
+              name: "Eagles",
+              external_urls: {
+                spotify:
+                  "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+              },
+            },
+          ],
+          album: {
+            id: "2widuo17g5CEC66IbUSmWu",
+            name: "Hotel California",
+            release_date: "1976-12-08",
+            total_tracks: 9,
+            images: [
+              {
+                url: "https://i.scdn.co/image/ab67616d0000b273429f4e4f9e7b0a8b6e1f1e1f",
+                width: 640,
+                height: 640,
+              },
+            ],
+            artists: [
+              {
+                id: "0ECwFtbIWEVNwjlrfc6xoL",
+                name: "Eagles",
+                external_urls: {
+                  spotify:
+                    "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+                },
+              },
+            ],
+            external_urls: {
+              spotify: "https://open.spotify.com/album/2widuo17g5CEC66IbUSmWu",
+            },
+          },
+        },
+        queue: [
+          {
+            id: "3n3Ppam7vgaVa1iaRUc9Lp",
+            name: "Mr. Brightside",
+            duration_ms: 222973,
+            preview_url: "https://p.scdn.co/mp3-preview/def456",
+            external_urls: {
+              spotify: "https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp",
+            },
+            artists: [
+              {
+                id: "0C0XlULifJtAgn6ZNCW2eu",
+                name: "The Killers",
+                external_urls: {
+                  spotify:
+                    "https://open.spotify.com/artist/0C0XlULifJtAgn6ZNCW2eu",
+                },
+              },
+            ],
+            album: {
+              id: "4OHNH3sDzIxnmUADXzv2kT",
+              name: "Hot Fuss",
+              release_date: "2004-06-07",
+              total_tracks: 11,
+              images: [
+                {
+                  url: "https://i.scdn.co/image/ab67616d0000b273f9e1e1f1e1f1e1f1e1f1e1f1",
+                  width: 640,
+                  height: 640,
+                },
+              ],
+              artists: [
+                {
+                  id: "0C0XlULifJtAgn6ZNCW2eu",
+                  name: "The Killers",
+                  external_urls: {
+                    spotify:
+                      "https://open.spotify.com/artist/0C0XlULifJtAgn6ZNCW2eu",
+                  },
+                },
+              ],
+              external_urls: {
+                spotify:
+                  "https://open.spotify.com/album/4OHNH3sDzIxnmUADXzv2kT",
+              },
+            },
+          },
+        ],
+      };
+
+      const getQueueMock = mock(async () => mockQueueData);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getUsersQueue: getQueueMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-playback-state"],
+      });
+
+      // When: getQueue() is called
+      const result = await adapter.getQueue();
+
+      // Then: Returns QueueState with currentlyPlaying and queue array
+      expect(result).not.toBeNull();
+      expect(result.currentlyPlaying).not.toBeNull();
+      expect(result.currentlyPlaying?.id).toBe("4iV5W9uYEdYUVa79Axb7Rh");
+      expect(result.currentlyPlaying?.name).toBe("Hotel California");
+      expect(result.queue).toBeInstanceOf(Array);
+      expect(result.queue.length).toBe(1);
+      expect(result.queue[0].id).toBe("3n3Ppam7vgaVa1iaRUc9Lp");
+      expect(result.queue[0].name).toBe("Mr. Brightside");
+      expect(getQueueMock).toHaveBeenCalled();
+    });
+
+    test("should return null for currentlyPlaying when nothing is playing", async () => {
+      // Given: User is authenticated but nothing is currently playing
+      const mockQueueData = {
+        currently_playing: null,
+        queue: [
+          {
+            id: "3n3Ppam7vgaVa1iaRUc9Lp",
+            name: "Mr. Brightside",
+            duration_ms: 222973,
+            preview_url: "https://p.scdn.co/mp3-preview/def456",
+            external_urls: {
+              spotify: "https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp",
+            },
+            artists: [
+              {
+                id: "0C0XlULifJtAgn6ZNCW2eu",
+                name: "The Killers",
+                external_urls: {
+                  spotify:
+                    "https://open.spotify.com/artist/0C0XlULifJtAgn6ZNCW2eu",
+                },
+              },
+            ],
+            album: {
+              id: "4OHNH3sDzIxnmUADXzv2kT",
+              name: "Hot Fuss",
+              release_date: "2004-06-07",
+              total_tracks: 11,
+              images: [
+                {
+                  url: "https://i.scdn.co/image/ab67616d0000b273f9e1e1f1e1f1e1f1e1f1e1f1",
+                  width: 640,
+                  height: 640,
+                },
+              ],
+              artists: [
+                {
+                  id: "0C0XlULifJtAgn6ZNCW2eu",
+                  name: "The Killers",
+                  external_urls: {
+                    spotify:
+                      "https://open.spotify.com/artist/0C0XlULifJtAgn6ZNCW2eu",
+                  },
+                },
+              ],
+              external_urls: {
+                spotify:
+                  "https://open.spotify.com/album/4OHNH3sDzIxnmUADXzv2kT",
+              },
+            },
+          },
+        ],
+      };
+
+      const getQueueMock = mock(async () => mockQueueData);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getUsersQueue: getQueueMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-playback-state"],
+      });
+
+      // When: getQueue() is called
+      const result = await adapter.getQueue();
+
+      // Then: Returns QueueState with null currentlyPlaying and populated queue
+      expect(result).not.toBeNull();
+      expect(result.currentlyPlaying).toBeNull();
+      expect(result.queue).toBeInstanceOf(Array);
+      expect(result.queue.length).toBe(1);
+      expect(getQueueMock).toHaveBeenCalled();
+    });
+
+    test("should return empty queue array when queue is empty", async () => {
+      // Given: User is authenticated with active playback but empty queue
+      const mockQueueData = {
+        currently_playing: {
+          id: "4iV5W9uYEdYUVa79Axb7Rh",
+          name: "Hotel California",
+          duration_ms: 391376,
+          preview_url: "https://p.scdn.co/mp3-preview/abc123",
+          external_urls: {
+            spotify: "https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh",
+          },
+          artists: [
+            {
+              id: "0ECwFtbIWEVNwjlrfc6xoL",
+              name: "Eagles",
+              external_urls: {
+                spotify:
+                  "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+              },
+            },
+          ],
+          album: {
+            id: "2widuo17g5CEC66IbUSmWu",
+            name: "Hotel California",
+            release_date: "1976-12-08",
+            total_tracks: 9,
+            images: [
+              {
+                url: "https://i.scdn.co/image/ab67616d0000b273429f4e4f9e7b0a8b6e1f1e1f",
+                width: 640,
+                height: 640,
+              },
+            ],
+            artists: [
+              {
+                id: "0ECwFtbIWEVNwjlrfc6xoL",
+                name: "Eagles",
+                external_urls: {
+                  spotify:
+                    "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+                },
+              },
+            ],
+            external_urls: {
+              spotify: "https://open.spotify.com/album/2widuo17g5CEC66IbUSmWu",
+            },
+          },
+        },
+        queue: [],
+      };
+
+      const getQueueMock = mock(async () => mockQueueData);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getUsersQueue: getQueueMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-playback-state"],
+      });
+
+      // When: getQueue() is called
+      const result = await adapter.getQueue();
+
+      // Then: Returns QueueState with currentlyPlaying and empty queue array
+      expect(result).not.toBeNull();
+      expect(result.currentlyPlaying).not.toBeNull();
+      expect(result.queue).toBeInstanceOf(Array);
+      expect(result.queue.length).toBe(0);
+      expect(getQueueMock).toHaveBeenCalled();
+    });
+
+    test("should throw RateLimitError when rate limited", async () => {
+      // Given: API rate limit has been exceeded (429 response)
+      const error = new Error("Rate limit exceeded") as Error & {
+        status: number;
+        headers?: { "retry-after": string };
+      };
+      error.status = 429;
+      error.headers = { "retry-after": "60" };
+
+      const getQueueMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          getUsersQueue: getQueueMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-playback-state"],
+      });
+
+      // When: getQueue() is called during rate limit
+      // Then: RateLimitError is thrown
+      await expect(adapter.getQueue()).rejects.toThrow(RateLimitError);
+    });
+  });
+
+  describe("AC-058: Add to Queue [CH-042]", () => {
+    test("should add track to queue when addToQueue(trackId) is called", async () => {
+      // Given: User is authenticated with Premium, playback is active
+      const addItemToPlaybackQueueMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          addItemToPlaybackQueue: addItemToPlaybackQueueMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: addToQueue(trackId) is called
+      await adapter.addToQueue("4iV5W9uYEdYUVa79Axb7Rh");
+
+      // Then: SDK addItemToPlaybackQueue is called with correct URI and empty deviceId
+      expect(addItemToPlaybackQueueMock).toHaveBeenCalledWith(
+        "spotify:track:4iV5W9uYEdYUVa79Axb7Rh",
+        "",
+      );
+    });
+
+    test("should throw PremiumRequiredError when user has no Premium", async () => {
+      // Given: User is authenticated without Premium (403 Forbidden)
+      const error = new Error("Forbidden") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 403;
+      error.headers = {};
+
+      const addItemToPlaybackQueueMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          addItemToPlaybackQueue: addItemToPlaybackQueueMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: addToQueue is called
+      // Then: PremiumRequiredError is thrown
+      await expect(
+        adapter.addToQueue("4iV5W9uYEdYUVa79Axb7Rh"),
+      ).rejects.toThrow(PremiumRequiredError);
+    });
+
+    test("should throw NoActiveDeviceError when no device is active", async () => {
+      // Given: User has Premium but no active device (404)
+      const error = new Error("No active device found") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 404;
+      error.headers = {};
+
+      const addItemToPlaybackQueueMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          addItemToPlaybackQueue: addItemToPlaybackQueueMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: addToQueue is called
+      // Then: NoActiveDeviceError is thrown
+      await expect(
+        adapter.addToQueue("4iV5W9uYEdYUVa79Axb7Rh"),
+      ).rejects.toThrow(NoActiveDeviceError);
+    });
+
+    test("should throw RateLimitError when rate limited", async () => {
+      // Given: API rate limit has been exceeded (429 response)
+      const error = new Error("Rate limit exceeded") as Error & {
+        status: number;
+        headers?: { "retry-after": string };
+      };
+      error.status = 429;
+      error.headers = { "retry-after": "60" };
+
+      const addItemToPlaybackQueueMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          addItemToPlaybackQueue: addItemToPlaybackQueueMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: addToQueue is called during rate limit
+      // Then: RateLimitError is thrown
+      await expect(
+        adapter.addToQueue("4iV5W9uYEdYUVa79Axb7Rh"),
+      ).rejects.toThrow(RateLimitError);
+    });
+  });
 });
