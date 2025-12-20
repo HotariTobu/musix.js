@@ -1733,8 +1733,69 @@ export function createSpotifyUserAdapter(
         throw new NetworkError(String(error));
       }
     },
-    async getTopArtists() {
-      throw new Error("Not implemented");
+    /**
+     * Gets the user's top artists based on listening history.
+     * @param options - Optional options for time range and pagination
+     * @returns PaginatedResult containing user's top artists
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {RateLimitError} If rate limit is exceeded
+     * @throws {NetworkError} If network error occurs
+     */
+    async getTopArtists(
+      options?: TopItemsOptions,
+    ): Promise<PaginatedResult<Artist>> {
+      // Apply default values and constraints
+      // Limit is capped at 50 (Spotify API max), cast to SDK's expected literal union type
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+      const timeRange = options?.timeRange ?? "medium_term";
+
+      try {
+        // Call Spotify SDK to get user's top artists
+        // Signature: topItems(type, timeRange, limit, offset)
+        const response = await sdk.currentUser.topItems(
+          "artists",
+          timeRange,
+          limit,
+          offset,
+        );
+
+        // Transform Spotify artists to musix.js Artist type
+        const artists = response.items.map((item) =>
+          transformArtist(item as SpotifyArtist),
+        );
+
+        // Calculate hasNext based on whether there are more items
+        const hasNext = offset + response.items.length < response.total;
+
+        return {
+          items: artists,
+          total: response.total,
+          limit,
+          offset,
+          hasNext,
+        };
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid or expired access token");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+
+        // Handle network errors (errors without status property)
+        if (error instanceof Error) {
+          throw new NetworkError(error.message, error);
+        }
+
+        // Handle non-Error objects
+        throw new NetworkError(String(error));
+      }
     },
     async createPlaylist() {
       throw new Error("Not implemented");

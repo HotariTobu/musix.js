@@ -14943,4 +14943,635 @@ describe("getTopTracks", () => {
       await expect(adapter.getTopTracks()).rejects.toThrow(NetworkError);
     });
   });
+
+  // AC-046: Get Top Artists [CH-032]
+  describe("getTopArtists", () => {
+    describe("AC-046: Get Top Artists [CH-032]", () => {
+      test("should return PaginatedResult<Artist> with user's top artists when called without options", async () => {
+        // Given: Valid adapter with user authentication
+        const mockArtist1 = {
+          id: "top-artist-1",
+          name: "Top Artist One",
+          external_urls: {
+            spotify: "https://open.spotify.com/artist/top-artist-1",
+          },
+          genres: ["rock", "alternative"],
+          images: [
+            { url: "https://i.scdn.co/image/artist1", width: 640, height: 640 },
+          ],
+          popularity: 85,
+        };
+
+        const mockArtist2 = {
+          id: "top-artist-2",
+          name: "Top Artist Two",
+          external_urls: {
+            spotify: "https://open.spotify.com/artist/top-artist-2",
+          },
+          genres: ["pop", "indie"],
+          images: [
+            { url: "https://i.scdn.co/image/artist2", width: 640, height: 640 },
+          ],
+          popularity: 78,
+        };
+
+        const topItemsMock = mock(
+          async (
+            type: string,
+            timeRange?: string,
+            limit?: number,
+            offset?: number,
+          ) => ({
+            items: [mockArtist1, mockArtist2],
+            total: 50,
+            limit: limit ?? 20,
+            offset: offset ?? 0,
+            href: "https://api.spotify.com/v1/me/top/artists",
+            next: "https://api.spotify.com/v1/me/top/artists?offset=20",
+            previous: null,
+          }),
+        );
+
+        const mockSdk = {
+          currentUser: {
+            profile: mock(async () => ({
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            })),
+            topItems: topItemsMock,
+          },
+          logOut: mock(() => {}),
+        };
+
+        SpotifyApi.withUserAuthorization = mock(
+          () =>
+            mockSdk as unknown as ReturnType<
+              typeof SpotifyApi.withUserAuthorization
+            >,
+        );
+
+        const { createSpotifyUserAdapter } = await import("./index");
+        const adapter = createSpotifyUserAdapter({
+          clientId: "test-client-id",
+          redirectUri: "http://localhost:3000/callback",
+          scopes: ["user-top-read"],
+        });
+
+        // When: getTopArtists() is called
+        const result = await adapter.getTopArtists();
+
+        // Then: Returns PaginatedResult<Artist> with user's top artists
+        expect(result).toBeObject();
+        expect(result.items).toBeArray();
+        expect(result.items).toHaveLength(2);
+        expect(result.total).toBe(50);
+        expect(result.limit).toBe(20);
+        expect(result.offset).toBe(0);
+        expect(result.hasNext).toBe(true); // 0 + 2 < 50
+
+        // Verify Artist structure
+        expect(result.items[0].id).toBe("top-artist-1");
+        expect(result.items[0].name).toBe("Top Artist One");
+        expect(result.items[0].externalUrl).toBe(
+          "https://open.spotify.com/artist/top-artist-1",
+        );
+
+        expect(result.items[1].id).toBe("top-artist-2");
+        expect(result.items[1].name).toBe("Top Artist Two");
+
+        // Verify SDK was called with correct parameters (artists type, default timeRange)
+        expect(topItemsMock).toHaveBeenCalledTimes(1);
+        expect(topItemsMock).toHaveBeenCalledWith(
+          "artists",
+          "medium_term",
+          20,
+          0,
+        );
+      });
+
+      test("should return empty items array when user has no top artists", async () => {
+        // Given: Valid adapter with authentication, no top artists
+        const topItemsMock = mock(async () => ({
+          items: [],
+          total: 0,
+          limit: 20,
+          offset: 0,
+          href: "https://api.spotify.com/v1/me/top/artists",
+          next: null,
+          previous: null,
+        }));
+
+        const mockSdk = {
+          currentUser: {
+            profile: mock(async () => ({
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            })),
+            topItems: topItemsMock,
+          },
+          logOut: mock(() => {}),
+        };
+
+        SpotifyApi.withUserAuthorization = mock(
+          () =>
+            mockSdk as unknown as ReturnType<
+              typeof SpotifyApi.withUserAuthorization
+            >,
+        );
+
+        const { createSpotifyUserAdapter } = await import("./index");
+        const adapter = createSpotifyUserAdapter({
+          clientId: "test-client-id",
+          redirectUri: "http://localhost:3000/callback",
+          scopes: ["user-top-read"],
+        });
+
+        // When: getTopArtists() is called
+        const result = await adapter.getTopArtists();
+
+        // Then: Returns empty PaginatedResult
+        expect(result.items).toBeArray();
+        expect(result.items).toHaveLength(0);
+        expect(result.total).toBe(0);
+        expect(result.hasNext).toBe(false);
+      });
+
+      test("should correctly pass limit and offset options to SDK", async () => {
+        // Given: Valid adapter with authentication
+        const mockArtists = Array.from({ length: 10 }, (_, i) => ({
+          id: `artist-${i}`,
+          name: `Artist ${i}`,
+          external_urls: {
+            spotify: `https://open.spotify.com/artist/artist-${i}`,
+          },
+          genres: ["rock"],
+          images: [],
+          popularity: 70,
+        }));
+
+        const topItemsMock = mock(
+          async (
+            type: string,
+            timeRange?: string,
+            limit?: number,
+            offset?: number,
+          ) => ({
+            items: mockArtists.slice(0, limit ?? 20),
+            total: 100,
+            limit: limit ?? 20,
+            offset: offset ?? 0,
+            href: "https://api.spotify.com/v1/me/top/artists",
+            next: "https://api.spotify.com/v1/me/top/artists?offset=30",
+            previous: null,
+          }),
+        );
+
+        const mockSdk = {
+          currentUser: {
+            profile: mock(async () => ({
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            })),
+            topItems: topItemsMock,
+          },
+          logOut: mock(() => {}),
+        };
+
+        SpotifyApi.withUserAuthorization = mock(
+          () =>
+            mockSdk as unknown as ReturnType<
+              typeof SpotifyApi.withUserAuthorization
+            >,
+        );
+
+        const { createSpotifyUserAdapter } = await import("./index");
+        const adapter = createSpotifyUserAdapter({
+          clientId: "test-client-id",
+          redirectUri: "http://localhost:3000/callback",
+          scopes: ["user-top-read"],
+        });
+
+        // When: getTopArtists({ limit: 10, offset: 20 }) is called
+        const result = await adapter.getTopArtists({ limit: 10, offset: 20 });
+
+        // Then: Returns correct items and SDK was called with correct parameters
+        expect(result.items).toHaveLength(10);
+        expect(result.limit).toBe(10);
+        expect(result.offset).toBe(20);
+        expect(topItemsMock).toHaveBeenCalledWith(
+          "artists",
+          "medium_term",
+          10,
+          20,
+        );
+      });
+
+      test("should set hasNext to false when at last page", async () => {
+        // Given: Valid adapter at the last page of results
+        const mockArtists = [
+          {
+            id: "artist-last",
+            name: "Last Artist",
+            external_urls: {
+              spotify: "https://open.spotify.com/artist/artist-last",
+            },
+            genres: ["jazz"],
+            images: [],
+            popularity: 65,
+          },
+        ];
+
+        const topItemsMock = mock(
+          async (
+            type: string,
+            timeRange?: string,
+            limit?: number,
+            offset?: number,
+          ) => ({
+            items: mockArtists,
+            total: 21, // offset=20, 1 item returned, total=21 -> hasNext=false
+            limit: limit ?? 20,
+            offset: offset ?? 0,
+            href: "https://api.spotify.com/v1/me/top/artists",
+            next: null,
+            previous: "https://api.spotify.com/v1/me/top/artists?offset=0",
+          }),
+        );
+
+        const mockSdk = {
+          currentUser: {
+            profile: mock(async () => ({
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            })),
+            topItems: topItemsMock,
+          },
+          logOut: mock(() => {}),
+        };
+
+        SpotifyApi.withUserAuthorization = mock(
+          () =>
+            mockSdk as unknown as ReturnType<
+              typeof SpotifyApi.withUserAuthorization
+            >,
+        );
+
+        const { createSpotifyUserAdapter } = await import("./index");
+        const adapter = createSpotifyUserAdapter({
+          clientId: "test-client-id",
+          redirectUri: "http://localhost:3000/callback",
+          scopes: ["user-top-read"],
+        });
+
+        // When: getTopArtists({ offset: 20 }) is called (last page)
+        const result = await adapter.getTopArtists({ offset: 20 });
+
+        // Then: hasNext is false (20 + 1 = 21, not less than 21)
+        expect(result.hasNext).toBe(false);
+        expect(result.items).toHaveLength(1);
+      });
+    });
+
+    describe("Time Range Tests [CH-032]", () => {
+      test("should pass short_term time range to SDK when specified", async () => {
+        // Given: Valid adapter with authentication
+        const mockArtist = {
+          id: "recent-artist",
+          name: "Recent Artist",
+          external_urls: {
+            spotify: "https://open.spotify.com/artist/recent-artist",
+          },
+          genres: ["electronic"],
+          images: [],
+          popularity: 80,
+        };
+
+        const topItemsMock = mock(
+          async (
+            type: string,
+            timeRange?: string,
+            limit?: number,
+            offset?: number,
+          ) => ({
+            items: [mockArtist],
+            total: 1,
+            limit: limit ?? 20,
+            offset: offset ?? 0,
+            href: "https://api.spotify.com/v1/me/top/artists",
+            next: null,
+            previous: null,
+          }),
+        );
+
+        const mockSdk = {
+          currentUser: {
+            profile: mock(async () => ({
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            })),
+            topItems: topItemsMock,
+          },
+          logOut: mock(() => {}),
+        };
+
+        SpotifyApi.withUserAuthorization = mock(
+          () =>
+            mockSdk as unknown as ReturnType<
+              typeof SpotifyApi.withUserAuthorization
+            >,
+        );
+
+        const { createSpotifyUserAdapter } = await import("./index");
+        const adapter = createSpotifyUserAdapter({
+          clientId: "test-client-id",
+          redirectUri: "http://localhost:3000/callback",
+          scopes: ["user-top-read"],
+        });
+
+        // When: getTopArtists({ timeRange: "short_term" }) is called
+        const result = await adapter.getTopArtists({ timeRange: "short_term" });
+
+        // Then: SDK was called with short_term time range (approximately last 4 weeks)
+        expect(result.items).toHaveLength(1);
+        expect(topItemsMock).toHaveBeenCalledWith(
+          "artists",
+          "short_term",
+          20,
+          0,
+        );
+      });
+
+      test("should pass long_term time range to SDK when specified", async () => {
+        // Given: Valid adapter with authentication
+        const topItemsMock = mock(
+          async (
+            type: string,
+            timeRange?: string,
+            limit?: number,
+            offset?: number,
+          ) => ({
+            items: [],
+            total: 0,
+            limit: limit ?? 20,
+            offset: offset ?? 0,
+            href: "https://api.spotify.com/v1/me/top/artists",
+            next: null,
+            previous: null,
+          }),
+        );
+
+        const mockSdk = {
+          currentUser: {
+            profile: mock(async () => ({
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            })),
+            topItems: topItemsMock,
+          },
+          logOut: mock(() => {}),
+        };
+
+        SpotifyApi.withUserAuthorization = mock(
+          () =>
+            mockSdk as unknown as ReturnType<
+              typeof SpotifyApi.withUserAuthorization
+            >,
+        );
+
+        const { createSpotifyUserAdapter } = await import("./index");
+        const adapter = createSpotifyUserAdapter({
+          clientId: "test-client-id",
+          redirectUri: "http://localhost:3000/callback",
+          scopes: ["user-top-read"],
+        });
+
+        // When: getTopArtists({ timeRange: "long_term" }) is called
+        await adapter.getTopArtists({ timeRange: "long_term" });
+
+        // Then: SDK was called with long_term time range
+        expect(topItemsMock).toHaveBeenCalledWith(
+          "artists",
+          "long_term",
+          20,
+          0,
+        );
+      });
+
+      test("should use medium_term as default time range when not specified", async () => {
+        // Given: Valid adapter with authentication
+        const topItemsMock = mock(
+          async (
+            type: string,
+            timeRange?: string,
+            limit?: number,
+            offset?: number,
+          ) => ({
+            items: [],
+            total: 0,
+            limit: limit ?? 20,
+            offset: offset ?? 0,
+            href: "https://api.spotify.com/v1/me/top/artists",
+            next: null,
+            previous: null,
+          }),
+        );
+
+        const mockSdk = {
+          currentUser: {
+            profile: mock(async () => ({
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            })),
+            topItems: topItemsMock,
+          },
+          logOut: mock(() => {}),
+        };
+
+        SpotifyApi.withUserAuthorization = mock(
+          () =>
+            mockSdk as unknown as ReturnType<
+              typeof SpotifyApi.withUserAuthorization
+            >,
+        );
+
+        const { createSpotifyUserAdapter } = await import("./index");
+        const adapter = createSpotifyUserAdapter({
+          clientId: "test-client-id",
+          redirectUri: "http://localhost:3000/callback",
+          scopes: ["user-top-read"],
+        });
+
+        // When: getTopArtists() is called without timeRange option
+        await adapter.getTopArtists();
+
+        // Then: SDK was called with medium_term as default time range
+        expect(topItemsMock).toHaveBeenCalledWith(
+          "artists",
+          "medium_term",
+          20,
+          0,
+        );
+      });
+    });
+
+    describe("Error Handling [CH-032]", () => {
+      test("should throw AuthenticationError when user is not authenticated (401)", async () => {
+        // Given: Valid adapter configuration
+        const topItemsMock = mock(async () => {
+          const error = new Error("Unauthorized") as Error & {
+            status: number;
+            headers: Record<string, string>;
+          };
+          error.status = 401;
+          error.headers = {};
+          throw error;
+        });
+
+        const mockSdk = {
+          currentUser: {
+            profile: mock(async () => ({
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            })),
+            topItems: topItemsMock,
+          },
+          logOut: mock(() => {}),
+        };
+
+        SpotifyApi.withUserAuthorization = mock(
+          () =>
+            mockSdk as unknown as ReturnType<
+              typeof SpotifyApi.withUserAuthorization
+            >,
+        );
+
+        const { createSpotifyUserAdapter } = await import("./index");
+        const adapter = createSpotifyUserAdapter({
+          clientId: "test-client-id",
+          redirectUri: "http://localhost:3000/callback",
+          scopes: ["user-top-read"],
+        });
+
+        // When: getTopArtists is called without valid authentication
+        // Then: AuthenticationError is thrown
+        await expect(adapter.getTopArtists()).rejects.toThrow(
+          AuthenticationError,
+        );
+      });
+
+      test("should throw RateLimitError when rate limit is exceeded (429)", async () => {
+        // Given: Valid adapter configuration
+        const topItemsMock = mock(async () => {
+          const error = new Error("Too Many Requests") as Error & {
+            status: number;
+            headers: Record<string, string>;
+          };
+          error.status = 429;
+          error.headers = { "retry-after": "30" };
+          throw error;
+        });
+
+        const mockSdk = {
+          currentUser: {
+            profile: mock(async () => ({
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            })),
+            topItems: topItemsMock,
+          },
+          logOut: mock(() => {}),
+        };
+
+        SpotifyApi.withUserAuthorization = mock(
+          () =>
+            mockSdk as unknown as ReturnType<
+              typeof SpotifyApi.withUserAuthorization
+            >,
+        );
+
+        const { createSpotifyUserAdapter } = await import("./index");
+        const adapter = createSpotifyUserAdapter({
+          clientId: "test-client-id",
+          redirectUri: "http://localhost:3000/callback",
+          scopes: ["user-top-read"],
+        });
+
+        // When: getTopArtists is called and rate limit is exceeded
+        // Then: RateLimitError is thrown with retryAfter value
+        try {
+          await adapter.getTopArtists();
+          expect(true).toBe(false); // Should not reach here
+        } catch (error) {
+          expect(error).toBeInstanceOf(RateLimitError);
+          expect((error as RateLimitError).retryAfter).toBe(30);
+        }
+      });
+
+      test("should throw NetworkError when network error occurs", async () => {
+        // Given: Valid adapter configuration
+        const topItemsMock = mock(async () => {
+          throw new Error("Network connection failed");
+        });
+
+        const mockSdk = {
+          currentUser: {
+            profile: mock(async () => ({
+              id: "user-123",
+              display_name: "Test User",
+              external_urls: {
+                spotify: "https://open.spotify.com/user/user-123",
+              },
+            })),
+            topItems: topItemsMock,
+          },
+          logOut: mock(() => {}),
+        };
+
+        SpotifyApi.withUserAuthorization = mock(
+          () =>
+            mockSdk as unknown as ReturnType<
+              typeof SpotifyApi.withUserAuthorization
+            >,
+        );
+
+        const { createSpotifyUserAdapter } = await import("./index");
+        const adapter = createSpotifyUserAdapter({
+          clientId: "test-client-id",
+          redirectUri: "http://localhost:3000/callback",
+          scopes: ["user-top-read"],
+        });
+
+        // When: getTopArtists is called and network error occurs
+        // Then: NetworkError is thrown
+        await expect(adapter.getTopArtists()).rejects.toThrow(NetworkError);
+      });
+    });
+  });
 });
