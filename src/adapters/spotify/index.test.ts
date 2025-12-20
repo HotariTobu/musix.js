@@ -5510,4 +5510,245 @@ describe("Token Auto Refresh [NFR-003]", () => {
       });
     });
   });
+
+  // CH-005: searchArtists - Extended Search
+  describe("searchArtists", () => {
+    // Helper to create mock Spotify artist for search
+    const createMockArtist = (overrides: Record<string, unknown> = {}) => ({
+      id: "artist-id",
+      name: "Test Artist",
+      genres: ["rock", "pop"],
+      external_urls: {
+        spotify: "https://open.spotify.com/artist/artist-id",
+      },
+      images: [
+        { url: "https://i.scdn.co/image/abc123", width: 640, height: 640 },
+      ],
+      ...overrides,
+    });
+
+    // Helper to create mock search response
+    const createMockSearchResponse = (
+      total: number,
+      limit: number,
+      offset: number,
+      items: unknown[] = [],
+    ) => ({
+      artists: {
+        items,
+        total,
+        limit,
+        offset,
+        href: `https://api.spotify.com/v1/search?query=test&type=artist&offset=${offset}&limit=${limit}`,
+        next: offset + limit < total ? "next-page-url" : null,
+        previous: offset > 0 ? "previous-page-url" : null,
+      },
+    });
+
+    // AC-009: Search Artists
+    describe("AC-009: Search Artists", () => {
+      test("should return SearchResult<Artist> object with items, total, limit, offset", async () => {
+        // Given: Valid adapter with authentication
+        const mockArtist = createMockArtist();
+        const mockResponse = createMockSearchResponse(100, 20, 0, [mockArtist]);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              search: mock(async () => mockResponse),
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: searchArtists is called with query
+        const result = await adapter.searchArtists("queen");
+
+        // Then: SearchResult<Artist> object is returned with all required properties
+        expect(result).toBeDefined();
+        expect(Array.isArray(result.items)).toBe(true);
+        expect(typeof result.total).toBe("number");
+        expect(typeof result.limit).toBe("number");
+        expect(typeof result.offset).toBe("number");
+      });
+
+      test("should return items as Artist array", async () => {
+        // Given: Valid adapter with authentication
+        const mockArtist1 = createMockArtist({
+          id: "artist1",
+          name: "Artist 1",
+        });
+        const mockArtist2 = createMockArtist({
+          id: "artist2",
+          name: "Artist 2",
+        });
+        const mockResponse = createMockSearchResponse(2, 20, 0, [
+          mockArtist1,
+          mockArtist2,
+        ]);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              search: mock(async () => mockResponse),
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: searchArtists is called
+        const result = await adapter.searchArtists("test query");
+
+        // Then: items array contains Artist objects with required fields
+        expect(result.items.length).toBe(2);
+        expect(result.items[0].id).toBe("artist1");
+        expect(result.items[0].name).toBe("Artist 1");
+        expect(result.items[0].externalUrl).toBeDefined();
+      });
+
+      test("should pass query and artist type to SDK search method", async () => {
+        // Given: Valid adapter with authentication
+        const mockResponse = createMockSearchResponse(0, 20, 0, []);
+        const searchMock = mock(async () => mockResponse);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              search: searchMock,
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: searchArtists is called
+        await adapter.searchArtists("queen");
+
+        // Then: SDK search is called with artist type
+        expect(searchMock).toHaveBeenCalledWith(
+          "queen",
+          ["artist"],
+          undefined,
+          20,
+          0,
+        );
+      });
+
+      test("should respect limit option", async () => {
+        // Given: Valid adapter with authentication
+        const mockResponse = createMockSearchResponse(100, 10, 0, []);
+        const searchMock = mock(async () => mockResponse);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              search: searchMock,
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: searchArtists is called with limit option
+        await adapter.searchArtists("test", { limit: 10 });
+
+        // Then: SDK search is called with specified limit
+        expect(searchMock).toHaveBeenCalledWith(
+          "test",
+          ["artist"],
+          undefined,
+          10,
+          0,
+        );
+      });
+
+      test("should respect offset option", async () => {
+        // Given: Valid adapter with authentication
+        const mockResponse = createMockSearchResponse(100, 20, 40, []);
+        const searchMock = mock(async () => mockResponse);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              search: searchMock,
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: searchArtists is called with offset option
+        await adapter.searchArtists("test", { offset: 40 });
+
+        // Then: SDK search is called with specified offset
+        expect(searchMock).toHaveBeenCalledWith(
+          "test",
+          ["artist"],
+          undefined,
+          20,
+          40,
+        );
+      });
+
+      test("should cap limit at 50", async () => {
+        // Given: Valid adapter with authentication
+        const mockResponse = createMockSearchResponse(100, 50, 0, []);
+        const searchMock = mock(async () => mockResponse);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              search: searchMock,
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: searchArtists is called with limit > 50
+        await adapter.searchArtists("test", { limit: 100 });
+
+        // Then: SDK search is called with limit capped at 50
+        expect(searchMock).toHaveBeenCalledWith(
+          "test",
+          ["artist"],
+          undefined,
+          50,
+          0,
+        );
+      });
+    });
+  });
 });

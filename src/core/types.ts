@@ -85,6 +85,10 @@ export interface SpotifyAdapter {
     query: string,
     options?: SearchOptions,
   ): Promise<SearchResult<Album>>;
+  searchArtists(
+    query: string,
+    options?: SearchOptions,
+  ): Promise<SearchResult<Artist>>;
   getAlbum(id: string): Promise<Album>;
   getAlbums(ids: string[]): Promise<Album[]>;
   getArtist(id: string): Promise<Artist>;

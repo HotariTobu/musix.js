@@ -452,6 +452,9 @@ describe("Core Types", () => {
         searchAlbums: async (query: string, options?: SearchOptions) => {
           throw new Error("Not implemented");
         },
+        searchArtists: async (query: string, options?: SearchOptions) => {
+          throw new Error("Not implemented");
+        },
         getAlbum: async (id: string) => {
           throw new Error("Not implemented");
         },
