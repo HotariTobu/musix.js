@@ -5,7 +5,7 @@
     { "id": "CH-001", "passes": true },
     { "id": "CH-002", "passes": true },
     { "id": "CH-003", "passes": true },
-    { "id": "CH-004", "passes": false },
+    { "id": "CH-004", "passes": true },
     { "id": "CH-005", "passes": false },
     { "id": "CH-006", "passes": false },
     { "id": "CH-007", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "Batch retrieval complete (CH-001 to CH-003). Next session should start with CH-004 (searchAlbums) - first of the extended search methods."
+  "notes": "Batch retrieval and searchAlbums complete (CH-001 to CH-004). Next session should start with CH-005 (searchArtists) - follows same pattern as searchAlbums."
 }
