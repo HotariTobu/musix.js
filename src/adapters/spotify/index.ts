@@ -37,9 +37,11 @@ import type {
   PlaybackState,
   Playlist,
   PlaylistDetails,
+  QueueState,
   RecentlyPlayedItem,
   RecommendationOptions,
   RecommendationSeeds,
+  RepeatMode,
   SearchOptions,
   SearchResult,
   SimplifiedPlaylist,
@@ -1184,17 +1186,100 @@ export function createSpotifyUserAdapter(
         throw error;
       }
     },
-    async setShuffle() {
-      throw new Error("Not implemented");
+    async setShuffle(state: boolean): Promise<void> {
+      try {
+        await sdk.player.togglePlaybackShuffle(state, "");
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 403) {
+            throw new PremiumRequiredError();
+          }
+          if (error.status === 404) {
+            throw new NoActiveDeviceError();
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+        throw error;
+      }
     },
-    async setRepeat() {
-      throw new Error("Not implemented");
+    async setRepeat(state: RepeatMode): Promise<void> {
+      try {
+        await sdk.player.setRepeatMode(state, "");
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 403) {
+            throw new PremiumRequiredError();
+          }
+          if (error.status === 404) {
+            throw new NoActiveDeviceError();
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+        throw error;
+      }
     },
-    async getQueue() {
-      throw new Error("Not implemented");
+    async getQueue(): Promise<QueueState> {
+      try {
+        const response = await sdk.player.getUsersQueue();
+
+        // Transform currently playing track if it exists and is a track (has album property)
+        const currentlyPlaying =
+          response.currently_playing && "album" in response.currently_playing
+            ? transformTrack(response.currently_playing as SpotifyTrack)
+            : null;
+
+        // Transform queue tracks (filter for tracks only, not episodes)
+        const queue = response.queue
+          .filter((item): item is SpotifyTrack => "album" in item)
+          .map(transformTrack);
+
+        return {
+          currentlyPlaying,
+          queue,
+        };
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+        throw error;
+      }
     },
-    async addToQueue() {
-      throw new Error("Not implemented");
+    async addToQueue(trackId: string): Promise<void> {
+      try {
+        const uri = `spotify:track:${trackId}`;
+        await sdk.player.addItemToPlaybackQueue(uri, "");
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 403) {
+            throw new PremiumRequiredError();
+          }
+          if (error.status === 404) {
+            throw new NoActiveDeviceError();
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+        throw error;
+      }
     },
     async getSavedTracks(
       options?: SearchOptions,
