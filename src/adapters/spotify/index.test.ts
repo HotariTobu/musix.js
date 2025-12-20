@@ -2533,3 +2533,653 @@ describe("getArtist", () => {
     });
   });
 });
+
+// AC-008: Playlist retrieval [FR-006]
+describe("getPlaylist", () => {
+  // Mock Spotify SDK playlist response data
+  const createMockSpotifyPlaylist = (
+    overrides: Record<string, unknown> = {},
+  ) => ({
+    id: "37i9dQZF1DWXRqgbRLwIKR",
+    name: "Top Hits 2024",
+    description: "The biggest songs right now",
+    owner: {
+      id: "spotify",
+      display_name: "Spotify",
+    },
+    tracks: {
+      items: [
+        {
+          track: {
+            id: "4iV5W9uYEdYUVa79Axb7Rh",
+            name: "Hotel California",
+            duration_ms: 391376,
+            preview_url: "https://p.scdn.co/mp3-preview/abc123",
+            external_urls: {
+              spotify: "https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh",
+            },
+            artists: [
+              {
+                id: "0ECwFtbIWEVNwjlrfc6xoL",
+                name: "Eagles",
+                external_urls: {
+                  spotify:
+                    "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+                },
+              },
+            ],
+            album: {
+              id: "2widuo17g5CEC66IbzveRu",
+              name: "Hotel California",
+              release_date: "1976-12-08",
+              total_tracks: 9,
+              images: [
+                {
+                  url: "https://i.scdn.co/image/abc123",
+                  width: 640,
+                  height: 640,
+                },
+                {
+                  url: "https://i.scdn.co/image/abc456",
+                  width: 300,
+                  height: 300,
+                },
+              ],
+              external_urls: {
+                spotify:
+                  "https://open.spotify.com/album/2widuo17g5CEC66IbzveRu",
+              },
+              artists: [
+                {
+                  id: "0ECwFtbIWEVNwjlrfc6xoL",
+                  name: "Eagles",
+                  external_urls: {
+                    spotify:
+                      "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ],
+    },
+    images: [
+      {
+        url: "https://i.scdn.co/image/playlist123",
+        width: 640,
+        height: 640,
+      },
+      {
+        url: "https://i.scdn.co/image/playlist456",
+        width: 300,
+        height: 300,
+      },
+    ],
+    external_urls: {
+      spotify: "https://open.spotify.com/playlist/37i9dQZF1DWXRqgbRLwIKR",
+    },
+    ...overrides,
+  });
+
+  // Create mock SDK with configurable behavior for playlists
+  const createMockSdkForPlaylist = (
+    playlistData: unknown = createMockSpotifyPlaylist(),
+    shouldThrow = false,
+    errorStatus = 404,
+  ) => {
+    const mockGet = mock(async (id: string) => {
+      if (shouldThrow) {
+        const error = new Error("Not found") as Error & { status: number };
+        error.status = errorStatus;
+        throw error;
+      }
+      return playlistData;
+    });
+
+    return {
+      playlists: { getPlaylist: mockGet },
+    };
+  };
+
+  // Helper to create adapter with mocked SDK for playlists
+  const createMockedAdapterForPlaylist = (
+    mockSdk: ReturnType<typeof createMockSdkForPlaylist>,
+  ) => {
+    SpotifyApi.withClientCredentials = mock(
+      () =>
+        mockSdk as unknown as ReturnType<
+          typeof SpotifyApi.withClientCredentials
+        >,
+    );
+    const config: SpotifyConfig = {
+      clientId: "test-client-id",
+      clientSecret: "test-client-secret",
+    };
+    return createSpotifyAdapter(config);
+  };
+
+  describe("Successful Playlist Retrieval", () => {
+    // AC-008: Given valid auth config, When existing playlist ID, Then returns Playlist object
+    test("should return Playlist object with all required properties when playlist exists", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForPlaylist();
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: getPlaylist is called with existing playlist ID
+      const playlistId = "37i9dQZF1DWXRqgbRLwIKR"; // Top Hits 2024
+      const playlist = await adapter.getPlaylist(playlistId);
+
+      // Then: Playlist object is returned with required properties
+      expect(playlist).toBeDefined();
+      expect(playlist.id).toBe(playlistId);
+      expect(typeof playlist.name).toBe("string");
+      expect(playlist.name.length).toBeGreaterThan(0);
+      expect(typeof playlist.externalUrl).toBe("string");
+      expect(playlist.externalUrl.length).toBeGreaterThan(0);
+    });
+
+    // AC-008: id, name, externalUrl are non-null strings
+    test("should return Playlist with id, name, externalUrl as non-null strings", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForPlaylist();
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: getPlaylist is called
+      const playlistId = "37i9dQZF1DWXRqgbRLwIKR";
+      const playlist = await adapter.getPlaylist(playlistId);
+
+      // Then: id, name, externalUrl are non-null strings
+      expect(typeof playlist.id).toBe("string");
+      expect(playlist.id).not.toBeNull();
+      expect(playlist.id.length).toBeGreaterThan(0);
+
+      expect(typeof playlist.name).toBe("string");
+      expect(playlist.name).not.toBeNull();
+      expect(playlist.name.length).toBeGreaterThan(0);
+
+      expect(typeof playlist.externalUrl).toBe("string");
+      expect(playlist.externalUrl).not.toBeNull();
+      expect(playlist.externalUrl.length).toBeGreaterThan(0);
+    });
+
+    // AC-008: owner object has id, displayName
+    test("should return Playlist with owner object containing id and displayName", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForPlaylist();
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: getPlaylist is called
+      const playlistId = "37i9dQZF1DWXRqgbRLwIKR";
+      const playlist = await adapter.getPlaylist(playlistId);
+
+      // Then: owner object has id and displayName
+      expect(playlist.owner).toBeDefined();
+      expect(typeof playlist.owner.id).toBe("string");
+      expect(playlist.owner.id.length).toBeGreaterThan(0);
+      expect(typeof playlist.owner.displayName).toBe("string");
+      expect(playlist.owner.displayName.length).toBeGreaterThan(0);
+    });
+
+    // AC-008: tracks array is included
+    test("should return Playlist with tracks array", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForPlaylist();
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: getPlaylist is called
+      const playlistId = "37i9dQZF1DWXRqgbRLwIKR";
+      const playlist = await adapter.getPlaylist(playlistId);
+
+      // Then: tracks array is included
+      expect(playlist.tracks).toBeDefined();
+      expect(Array.isArray(playlist.tracks)).toBe(true);
+    });
+
+    test("should return Playlist with valid Track objects in tracks array", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForPlaylist();
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: getPlaylist is called
+      const playlistId = "37i9dQZF1DWXRqgbRLwIKR";
+      const playlist = await adapter.getPlaylist(playlistId);
+
+      // Then: tracks array contains valid Track objects
+      expect(playlist.tracks.length).toBeGreaterThan(0);
+      const track = playlist.tracks[0];
+      expect(track).toBeDefined();
+      expect(typeof track.id).toBe("string");
+      expect(typeof track.name).toBe("string");
+      expect(Array.isArray(track.artists)).toBe(true);
+      expect(track.album).toBeDefined();
+    });
+
+    test("should return Playlist with images array", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForPlaylist();
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: getPlaylist is called
+      const playlistId = "37i9dQZF1DWXRqgbRLwIKR";
+      const playlist = await adapter.getPlaylist(playlistId);
+
+      // Then: images array is included
+      expect(playlist.images).toBeDefined();
+      expect(Array.isArray(playlist.images)).toBe(true);
+    });
+
+    test("should handle playlist with null description", async () => {
+      // Given: valid authentication config with mocked SDK returning null description
+      const mockPlaylist = createMockSpotifyPlaylist({ description: null });
+      const mockSdk = createMockSdkForPlaylist(mockPlaylist);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: getPlaylist is called
+      const playlist = await adapter.getPlaylist("test-playlist");
+
+      // Then: description is null
+      expect(playlist.description).toBeNull();
+    });
+
+    test("should handle playlist with empty tracks array", async () => {
+      // Given: valid authentication config with mocked SDK returning empty tracks
+      const mockPlaylist = createMockSpotifyPlaylist({
+        tracks: { items: [] },
+      });
+      const mockSdk = createMockSdkForPlaylist(mockPlaylist);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: getPlaylist is called
+      const playlist = await adapter.getPlaylist("empty-playlist");
+
+      // Then: tracks array is empty
+      expect(playlist.tracks).toBeDefined();
+      expect(Array.isArray(playlist.tracks)).toBe(true);
+      expect(playlist.tracks.length).toBe(0);
+    });
+  });
+
+  describe("Error Handling", () => {
+    // AC-008 Error: NotFoundError when playlist does not exist
+    test("should throw NotFoundError when playlist does not exist", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForPlaylist(undefined, true, 404);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When/Then: calling getPlaylist with non-existent ID throws NotFoundError
+      const nonExistentId = "invalid-playlist-id-12345";
+      await expect(adapter.getPlaylist(nonExistentId)).rejects.toThrow(
+        NotFoundError,
+      );
+    });
+
+    // AC-008 Error: resourceType is "playlist"
+    test("should throw NotFoundError with resourceType='playlist'", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForPlaylist(undefined, true, 404);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: calling getPlaylist with non-existent ID
+      const nonExistentId = "invalid-playlist-id-12345";
+
+      // Then: error has resourceType='playlist'
+      try {
+        await adapter.getPlaylist(nonExistentId);
+        throw new Error("Expected NotFoundError to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NotFoundError);
+        if (error instanceof NotFoundError) {
+          expect(error.resourceType).toBe("playlist");
+        }
+      }
+    });
+
+    // AC-008 Error: resourceId is the specified ID
+    test("should throw NotFoundError with correct resourceId", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForPlaylist(undefined, true, 404);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: calling getPlaylist with non-existent ID
+      const nonExistentId = "test-invalid-playlist-999";
+
+      // Then: error has resourceId set to the requested ID
+      try {
+        await adapter.getPlaylist(nonExistentId);
+        throw new Error("Expected NotFoundError to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NotFoundError);
+        if (error instanceof NotFoundError) {
+          expect(error.resourceId).toBe(nonExistentId);
+        }
+      }
+    });
+
+    // AC-008 Error: Error message format
+    test("should throw NotFoundError with formatted error message", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForPlaylist(undefined, true, 404);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: calling getPlaylist with non-existent ID
+      const nonExistentId = "missing-playlist-123";
+
+      // Then: error message contains playlist and ID
+      try {
+        await adapter.getPlaylist(nonExistentId);
+        throw new Error("Expected NotFoundError to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NotFoundError);
+        if (error instanceof NotFoundError) {
+          expect(error.message).toContain("playlist");
+          expect(error.message).toContain(nonExistentId);
+        }
+      }
+    });
+
+    // AC-008 Error: NotFoundError is catchable with instanceof
+    test("should be catchable using instanceof NotFoundError", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForPlaylist(undefined, true, 404);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When/Then: can catch using instanceof
+      try {
+        await adapter.getPlaylist("non-existent-id");
+        throw new Error("Expected NotFoundError to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NotFoundError);
+      }
+    });
+  });
+
+  describe("Edge Cases", () => {
+    // Edge case: Empty string ID
+    test("should handle empty string playlist ID", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForPlaylist(undefined, true, 404);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: calling with empty string
+      const emptyId = "";
+
+      // Then: should handle gracefully (likely NotFoundError or error)
+      await expect(adapter.getPlaylist(emptyId)).rejects.toThrow();
+    });
+
+    // Edge case: Very long ID string
+    test("should handle very long playlist ID strings", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForPlaylist(undefined, true, 404);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: calling with very long ID
+      const longId = "a".repeat(1000);
+
+      // Then: should handle gracefully (likely NotFoundError)
+      await expect(adapter.getPlaylist(longId)).rejects.toThrow();
+    });
+
+    // Edge case: Special characters in ID
+    test("should handle playlist IDs with special characters", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForPlaylist(undefined, true, 404);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: calling with special characters
+      const specialId = "playlist-!@#$%^&*()";
+
+      // Then: should handle gracefully
+      await expect(adapter.getPlaylist(specialId)).rejects.toThrow();
+    });
+
+    // Edge case: Whitespace in ID
+    test("should handle playlist IDs with whitespace", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForPlaylist(undefined, true, 404);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: calling with whitespace
+      const idWithSpaces = "  playlist-id-with-spaces  ";
+
+      // Then: should handle gracefully
+      await expect(adapter.getPlaylist(idWithSpaces)).rejects.toThrow();
+    });
+
+    // Edge case: Playlist with many tracks
+    test("should handle playlists with multiple tracks", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockTrackItem = {
+        track: {
+          id: "track-id",
+          name: "Track Name",
+          duration_ms: 200000,
+          preview_url: null,
+          external_urls: { spotify: "https://open.spotify.com/track/track-id" },
+          artists: [
+            {
+              id: "artist-id",
+              name: "Artist Name",
+              external_urls: {
+                spotify: "https://open.spotify.com/artist/artist-id",
+              },
+            },
+          ],
+          album: {
+            id: "album-id",
+            name: "Album Name",
+            release_date: "2024-01-01",
+            total_tracks: 10,
+            images: [],
+            external_urls: {
+              spotify: "https://open.spotify.com/album/album-id",
+            },
+            artists: [
+              {
+                id: "artist-id",
+                name: "Artist Name",
+                external_urls: {
+                  spotify: "https://open.spotify.com/artist/artist-id",
+                },
+              },
+            ],
+          },
+        },
+      };
+      const mockPlaylist = createMockSpotifyPlaylist({
+        tracks: {
+          items: [mockTrackItem, mockTrackItem, mockTrackItem],
+        },
+      });
+      const mockSdk = createMockSdkForPlaylist(mockPlaylist);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: getPlaylist is called for playlist with multiple tracks
+      const playlist = await adapter.getPlaylist("multi-track-playlist");
+
+      // Then: tracks array contains all tracks
+      expect(playlist.tracks).toBeDefined();
+      expect(playlist.tracks.length).toBe(3);
+    });
+
+    // Edge case: Playlist with empty images array
+    test("should handle playlists with empty images array", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockPlaylist = createMockSpotifyPlaylist({ images: [] });
+      const mockSdk = createMockSdkForPlaylist(mockPlaylist);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: getPlaylist is called for playlist without images
+      const playlist = await adapter.getPlaylist("playlist-no-images");
+
+      // Then: images array is empty
+      expect(playlist.images).toBeDefined();
+      expect(Array.isArray(playlist.images)).toBe(true);
+      expect(playlist.images.length).toBe(0);
+    });
+  });
+
+  describe("Multiple Calls", () => {
+    // Verify multiple calls work independently
+    test("should handle multiple sequential getPlaylist calls", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForPlaylist();
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: calling getPlaylist multiple times
+      const playlist1 = await adapter.getPlaylist("37i9dQZF1DWXRqgbRLwIKR");
+      const playlist2 = await adapter.getPlaylist("37i9dQZF1DWXRqgbRLwIKR");
+
+      // Then: both calls succeed
+      expect(playlist1).toBeDefined();
+      expect(playlist2).toBeDefined();
+      expect(playlist1.id).toBe(playlist2.id);
+    });
+
+    // Verify different playlist IDs work
+    test("should retrieve different playlists with different IDs", async () => {
+      // Given: valid authentication config with mocked SDK returning dynamic ID
+      const mockGet = mock(async (id: string) => {
+        return createMockSpotifyPlaylist({ id });
+      });
+      SpotifyApi.withClientCredentials = mock(
+        () =>
+          ({
+            playlists: { getPlaylist: mockGet },
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+      const config: SpotifyConfig = {
+        clientId: "test-client-id",
+        clientSecret: "test-client-secret",
+      };
+      const adapter = createSpotifyAdapter(config);
+
+      // When: calling getPlaylist with different IDs
+      const playlistId1 = "37i9dQZF1DWXRqgbRLwIKR";
+      const playlistId2 = "different-playlist-id";
+
+      const playlist1 = await adapter.getPlaylist(playlistId1);
+      const playlist2 = await adapter.getPlaylist(playlistId2);
+
+      // Then: both calls succeed with correct IDs
+      expect(playlist1).toBeDefined();
+      expect(playlist1.id).toBe(playlistId1);
+      expect(playlist2).toBeDefined();
+      expect(playlist2.id).toBe(playlistId2);
+    });
+  });
+
+  describe("Null Track Filtering", () => {
+    // Critical: Verify null tracks (deleted/unavailable) are filtered out
+    test("should filter out null tracks from playlist items", async () => {
+      // Given: Playlist with some null tracks (deleted tracks)
+      const validTrack = {
+        id: "valid-track-id",
+        name: "Valid Track",
+        duration_ms: 200000,
+        preview_url: null,
+        external_urls: { spotify: "https://open.spotify.com/track/valid" },
+        artists: [
+          {
+            id: "artist-id",
+            name: "Artist",
+            external_urls: { spotify: "https://open.spotify.com/artist/id" },
+          },
+        ],
+        album: {
+          id: "album-id",
+          name: "Album",
+          release_date: "2024-01-01",
+          total_tracks: 10,
+          images: [],
+          external_urls: { spotify: "https://open.spotify.com/album/id" },
+          artists: [
+            {
+              id: "artist-id",
+              name: "Artist",
+              external_urls: { spotify: "https://open.spotify.com/artist/id" },
+            },
+          ],
+        },
+      };
+      const mockPlaylist = createMockSpotifyPlaylist({
+        tracks: {
+          items: [
+            { track: validTrack },
+            { track: null }, // Deleted track
+            { track: { ...validTrack, id: "track-2", name: "Track 2" } },
+          ],
+        },
+      });
+      const mockSdk = createMockSdkForPlaylist(mockPlaylist);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: getPlaylist is called
+      const playlist = await adapter.getPlaylist("test-id");
+
+      // Then: only non-null tracks are returned (2 out of 3)
+      expect(playlist.tracks.length).toBe(2);
+      expect(playlist.tracks[0].id).toBe("valid-track-id");
+      expect(playlist.tracks[1].id).toBe("track-2");
+    });
+
+    test("should handle playlist with all null tracks", async () => {
+      // Given: Playlist where all tracks are null (all deleted)
+      const mockPlaylist = createMockSpotifyPlaylist({
+        tracks: {
+          items: [{ track: null }, { track: null }],
+        },
+      });
+      const mockSdk = createMockSdkForPlaylist(mockPlaylist);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When: getPlaylist is called
+      const playlist = await adapter.getPlaylist("all-deleted-playlist");
+
+      // Then: tracks array is empty
+      expect(playlist.tracks).toEqual([]);
+    });
+  });
+
+  describe("Error Propagation", () => {
+    // Critical: Non-404 errors should propagate without conversion
+    test("should propagate non-404 errors without converting to NotFoundError", async () => {
+      // Given: SDK throws 500 error
+      const mockSdk = createMockSdkForPlaylist(undefined, true, 500);
+      const adapter = createMockedAdapterForPlaylist(mockSdk);
+
+      // When/Then: error is propagated, not converted to NotFoundError
+      try {
+        await adapter.getPlaylist("test-id");
+        throw new Error("Expected error to be thrown");
+      } catch (error) {
+        expect(error).not.toBeInstanceOf(NotFoundError);
+        expect((error as { status: number }).status).toBe(500);
+      }
+    });
+
+    test("should propagate errors without status property", async () => {
+      // Given: SDK throws error without status (network error)
+      const mockGet = mock(async () => {
+        throw new Error("Network timeout");
+      });
+      SpotifyApi.withClientCredentials = mock(
+        () =>
+          ({
+            playlists: { getPlaylist: mockGet },
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+      const config: SpotifyConfig = {
+        clientId: "test-client-id",
+        clientSecret: "test-client-secret",
+      };
+      const adapter = createSpotifyAdapter(config);
+
+      // When/Then: error is propagated as-is
+      await expect(adapter.getPlaylist("test-id")).rejects.toThrow(
+        "Network timeout",
+      );
+    });
+  });
+});
