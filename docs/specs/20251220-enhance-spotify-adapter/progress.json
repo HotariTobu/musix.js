@@ -16,7 +16,7 @@
     { "id": "CH-012", "passes": true },
     { "id": "CH-013", "passes": true },
     { "id": "CH-014", "passes": true },
-    { "id": "CH-015", "passes": false },
+    { "id": "CH-015", "passes": true },
     { "id": "CH-016", "passes": false },
     { "id": "CH-017", "passes": false },
     { "id": "CH-018", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "CH-014 (skipToNext) complete. Implemented with AC-021 tests (3 total). Same pattern as pause() - passes empty string for deviceId, handles 403 as PremiumRequiredError and 404 as NoActiveDeviceError. Next session should continue with CH-015 (skipToPrevious)."
+  "notes": "CH-015 (skipToPrevious) complete. Implemented with AC-022 tests (3 total). Same pattern as skipToNext() - passes empty string for deviceId, handles 403 as PremiumRequiredError and 404 as NoActiveDeviceError. Next session should continue with CH-016 (seek)."
 }
