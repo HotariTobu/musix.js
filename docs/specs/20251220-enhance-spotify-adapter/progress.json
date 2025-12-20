@@ -32,7 +32,7 @@
     { "id": "CH-028", "passes": true },
     { "id": "CH-029", "passes": true },
     { "id": "CH-030", "passes": true },
-    { "id": "CH-031", "passes": false },
+    { "id": "CH-031", "passes": true },
     { "id": "CH-032", "passes": false },
     { "id": "CH-033", "passes": false },
     { "id": "CH-034", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "Session ended 2025-12-21. 30/42 requirements passing. All Discovery features (CH-027~030: getRecommendations, getRelatedArtists, getNewReleases, getRecentlyPlayed) completed. Next session should start with CH-031 (getTopTracks) - implement via sdk.currentUser.topItems('tracks', options). Remaining: Discovery (CH-031~032), Playlist Management (CH-033~037), Extended Playback Control (CH-038~042). 12 requirements left."
+  "notes": "Session ended 2025-12-21. 31/42 requirements passing. CH-031 (getTopTracks) implemented via sdk.currentUser.topItems() with TopItemsOptions (limit, offset, timeRange). Next session should implement CH-032 (getTopArtists) - very similar pattern to getTopTracks, just change 'tracks' to 'artists' and use transformArtist. Remaining: Discovery (CH-032), Playlist Management (CH-033~037), Extended Playback Control (CH-038~042). 11 requirements left."
 }
