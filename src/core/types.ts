@@ -84,5 +84,6 @@ export interface SpotifyAdapter {
   getAlbum(id: string): Promise<Album>;
   getAlbums(ids: string[]): Promise<Album[]>;
   getArtist(id: string): Promise<Artist>;
+  getArtists(ids: string[]): Promise<Artist[]>;
   getPlaylist(id: string): Promise<Playlist>;
 }

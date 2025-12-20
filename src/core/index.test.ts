@@ -458,6 +458,9 @@ describe("Core Types", () => {
         getArtist: async (id: string) => {
           throw new Error("Not implemented");
         },
+        getArtists: async (ids: string[]) => {
+          throw new Error("Not implemented");
+        },
         getPlaylist: async (id: string) => {
           throw new Error("Not implemented");
         },
