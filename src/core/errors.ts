@@ -51,3 +51,8 @@ export class SpotifyApiError extends Error {
     this.statusCode = statusCode;
   }
 }
+
+/** Validation error for invalid input parameters */
+export class ValidationError extends Error {
+  override name = "ValidationError" as const;
+}

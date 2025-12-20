@@ -6,6 +6,7 @@ import {
   NotFoundError,
   RateLimitError,
   SpotifyApiError,
+  ValidationError,
 } from "../../core/errors";
 import type { SpotifyAdapter, SpotifyConfig } from "../../core/types";
 
@@ -4436,6 +4437,298 @@ describe("Token Auto Refresh [NFR-003]", () => {
       expect(result).toBeDefined();
       expect(getMock).toHaveBeenCalledTimes(1);
       expect(logOutMock).not.toHaveBeenCalled();
+    });
+  });
+
+  // CH-001: getTracks - Batch Track Retrieval
+  describe("getTracks", () => {
+    // AC-001: Get Multiple Tracks with valid IDs
+    describe("AC-001: Get Multiple Tracks", () => {
+      test("should return array of Track objects for valid IDs", async () => {
+        // Given: Valid adapter with authentication
+        const mockTrack1 = createMockSpotifyTrack({
+          id: "track1",
+          name: "Track 1",
+        });
+        const mockTrack2 = createMockSpotifyTrack({
+          id: "track2",
+          name: "Track 2",
+        });
+        const mockTrack3 = createMockSpotifyTrack({
+          id: "track3",
+          name: "Track 3",
+        });
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              tracks: {
+                get: mock(async (ids: string[]) => [
+                  mockTrack1,
+                  mockTrack2,
+                  mockTrack3,
+                ]),
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getTracks is called with valid IDs
+        const result = await adapter.getTracks(["track1", "track2", "track3"]);
+
+        // Then: Returns array of Track objects
+        expect(result).toBeArray();
+        expect(result).toHaveLength(3);
+      });
+
+      test("should return tracks with required fields", async () => {
+        // Given: Valid adapter with authentication
+        const mockTrack = createMockSpotifyTrack();
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              tracks: {
+                get: mock(async () => [mockTrack]),
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getTracks is called
+        const result = await adapter.getTracks(["track-id"]);
+
+        // Then: Each Track has required fields
+        expect(result[0].id).toBeDefined();
+        expect(result[0].name).toBeDefined();
+        expect(result[0].artists).toBeArray();
+        expect(result[0].album).toBeDefined();
+        expect(result[0].durationMs).toBeDefined();
+      });
+
+      test("should pass IDs to SDK tracks.get method", async () => {
+        // Given: Valid adapter with authentication
+        const mockTrack = createMockSpotifyTrack();
+        const getMock = mock(async () => [mockTrack]);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              tracks: { get: getMock },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getTracks is called
+        await adapter.getTracks(["id1", "id2", "id3"]);
+
+        // Then: SDK get method is called with the IDs
+        expect(getMock).toHaveBeenCalledWith(["id1", "id2", "id3"]);
+      });
+    });
+
+    // AC-002: Get Multiple Tracks - Exceeds Limit
+    describe("AC-002: Exceeds Limit", () => {
+      test("should throw ValidationError when more than 50 IDs are provided", async () => {
+        // Given: Valid adapter with authentication
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              tracks: { get: mock(async () => []) },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getTracks is called with more than 50 IDs
+        const ids = Array.from({ length: 51 }, (_, i) => `track${i}`);
+
+        // Then: Throws ValidationError
+        await expect(adapter.getTracks(ids)).rejects.toThrow(ValidationError);
+      });
+
+      test("should include count in error message when exceeding limit", async () => {
+        // Given: Valid adapter with authentication
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              tracks: { get: mock(async () => []) },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getTracks is called with 51 IDs
+        const ids = Array.from({ length: 51 }, (_, i) => `track${i}`);
+
+        // Then: Error message includes the count
+        await expect(adapter.getTracks(ids)).rejects.toThrow(
+          "getTracks accepts maximum 50 IDs, received 51",
+        );
+      });
+
+      test("should accept exactly 50 IDs without error", async () => {
+        // Given: Valid adapter with authentication
+        const mockTracks = Array.from({ length: 50 }, (_, i) =>
+          createMockSpotifyTrack({ id: `track${i}` }),
+        );
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              tracks: { get: mock(async () => mockTracks) },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getTracks is called with exactly 50 IDs
+        const ids = Array.from({ length: 50 }, (_, i) => `track${i}`);
+        const result = await adapter.getTracks(ids);
+
+        // Then: Returns successfully
+        expect(result).toHaveLength(50);
+      });
+    });
+
+    // AC-003: Get Multiple Tracks - Some Not Found
+    describe("AC-003: Some Not Found", () => {
+      test("should filter out null values for invalid IDs", async () => {
+        // Given: Valid adapter, SDK returns null for invalid IDs
+        const mockTrack1 = createMockSpotifyTrack({ id: "valid1" });
+        const mockTrack2 = createMockSpotifyTrack({ id: "valid2" });
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              tracks: {
+                get: mock(async () => [mockTrack1, null, mockTrack2, null]),
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getTracks is called with mix of valid and invalid IDs
+        const result = await adapter.getTracks([
+          "valid1",
+          "invalid1",
+          "valid2",
+          "invalid2",
+        ]);
+
+        // Then: Returns array containing only valid tracks
+        expect(result).toHaveLength(2);
+        expect(result[0].id).toBe("valid1");
+        expect(result[1].id).toBe("valid2");
+      });
+
+      test("should return empty array when all IDs are invalid", async () => {
+        // Given: Valid adapter, SDK returns all nulls
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              tracks: {
+                get: mock(async () => [null, null, null]),
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getTracks is called with all invalid IDs
+        const result = await adapter.getTracks([
+          "invalid1",
+          "invalid2",
+          "invalid3",
+        ]);
+
+        // Then: Returns empty array (no error thrown)
+        expect(result).toBeArray();
+        expect(result).toHaveLength(0);
+      });
+    });
+
+    // AC-059: Empty Array Handling
+    describe("AC-059: Empty Array Handling", () => {
+      test("should return empty array without making API call when given empty array", async () => {
+        // Given: Valid adapter with authentication
+        const getMock = mock(async () => []);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              tracks: { get: getMock },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getTracks is called with empty array
+        const result = await adapter.getTracks([]);
+
+        // Then: Returns empty array without API call
+        expect(result).toBeArray();
+        expect(result).toHaveLength(0);
+        expect(getMock).not.toHaveBeenCalled();
+      });
     });
   });
 });

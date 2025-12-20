@@ -76,6 +76,7 @@ export interface SpotifyConfig {
 /** Spotify adapter interface */
 export interface SpotifyAdapter {
   getTrack(id: string): Promise<Track>;
+  getTracks(ids: string[]): Promise<Track[]>;
   searchTracks(
     query: string,
     options?: SearchOptions,
