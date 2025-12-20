@@ -422,6 +422,50 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
     },
 
     /**
+     * Searches for albums matching the query.
+     * @param query - The search query string
+     * @param options - Optional search options (limit, offset)
+     * @returns Promise resolving to SearchResult containing albums
+     */
+    async searchAlbums(
+      query: string,
+      options?: SearchOptions,
+    ): Promise<SearchResult<Album>> {
+      // Apply default values and constraints
+      // Limit is capped at 50 (Spotify API max), cast to SDK's expected literal union type
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          // Call Spotify SDK search API
+          const searchResults = await sdk.search(
+            query,
+            ["album"],
+            undefined,
+            limit,
+            offset,
+          );
+
+          // Transform Spotify simplified albums to musix.js Album type
+          const albums = searchResults.albums.items.map(
+            transformSimplifiedAlbum,
+          );
+
+          return {
+            items: albums,
+            total: searchResults.albums.total,
+            limit,
+            offset,
+          };
+        },
+        "album",
+        query,
+      );
+    },
+
+    /**
      * Retrieves an album by its Spotify ID.
      * @param id - The Spotify album ID
      * @returns Promise resolving to Album object
