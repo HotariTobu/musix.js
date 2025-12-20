@@ -7546,4 +7546,143 @@ describe("createSpotifyUserAdapter", () => {
       }
     });
   });
+
+  describe("AC-020: Pause [CH-013]", () => {
+    test("should pause playback on active device", async () => {
+      // Given: User is authenticated with Premium, playback is active
+      const pausePlaybackMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          pausePlayback: pausePlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: pause is called
+      await adapter.pause();
+
+      // Then: SDK pausePlayback is called
+      expect(pausePlaybackMock).toHaveBeenCalledWith("");
+    });
+
+    test("should throw PremiumRequiredError when user has no Premium", async () => {
+      // Given: User is authenticated without Premium (403 Forbidden)
+      const error = new Error("Forbidden") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 403;
+      error.headers = {};
+
+      const pausePlaybackMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          pausePlayback: pausePlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: pause is called
+      // Then: PremiumRequiredError is thrown
+      await expect(adapter.pause()).rejects.toThrow(PremiumRequiredError);
+    });
+
+    test("should throw NoActiveDeviceError when no device is active", async () => {
+      // Given: User has Premium but no active device (404)
+      const error = new Error("No active device found") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 404;
+      error.headers = {};
+
+      const pausePlaybackMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          pausePlayback: pausePlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: pause is called
+      // Then: NoActiveDeviceError is thrown
+      await expect(adapter.pause()).rejects.toThrow(NoActiveDeviceError);
+    });
+  });
 });

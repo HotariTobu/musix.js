@@ -14,7 +14,7 @@
     { "id": "CH-010", "passes": true },
     { "id": "CH-011", "passes": true },
     { "id": "CH-012", "passes": true },
-    { "id": "CH-013", "passes": false },
+    { "id": "CH-013", "passes": true },
     { "id": "CH-014", "passes": false },
     { "id": "CH-015", "passes": false },
     { "id": "CH-016", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "CH-012 (play) complete. Implemented with AC-017, AC-018, AC-019 tests (11 total). Note: SDK requires deviceId as string, so we pass empty string when not specified. Next session should start with CH-013 (pause)."
+  "notes": "CH-013 (pause) complete. Implemented with AC-020 tests (3 total). Same pattern as play() - passes empty string for deviceId, handles 403 as PremiumRequiredError and 404 as NoActiveDeviceError. Next session should continue with CH-014 (skipToNext)."
 }
