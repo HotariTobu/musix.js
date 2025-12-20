@@ -1107,8 +1107,30 @@ export function createSpotifyUserAdapter(
     async addToQueue() {
       throw new Error("Not implemented");
     },
-    async getSavedTracks() {
-      throw new Error("Not implemented");
+    async getSavedTracks(
+      options?: SearchOptions,
+    ): Promise<PaginatedResult<Track>> {
+      // Apply default values and constraints
+      // Limit is capped at 50 (Spotify API max), cast to SDK's expected literal union type
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      // Call Spotify SDK to get saved tracks
+      const response = await sdk.currentUser.tracks.savedTracks(limit, offset);
+
+      // Transform saved track items to musix.js Track type
+      const tracks = response.items.map((item) => transformTrack(item.track));
+
+      // Calculate hasNext based on whether there are more items
+      const hasNext = offset + response.items.length < response.total;
+
+      return {
+        items: tracks,
+        total: response.total,
+        limit,
+        offset,
+        hasNext,
+      };
     },
     async saveTrack() {
       throw new Error("Not implemented");
