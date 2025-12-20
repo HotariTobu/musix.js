@@ -56,3 +56,21 @@ export class SpotifyApiError extends Error {
 export class ValidationError extends Error {
   override name = "ValidationError" as const;
 }
+
+/** Premium required error for playback features */
+export class PremiumRequiredError extends Error {
+  override name = "PremiumRequiredError" as const;
+
+  constructor() {
+    super("Spotify Premium subscription is required for playback control");
+  }
+}
+
+/** No active device error */
+export class NoActiveDeviceError extends Error {
+  override name = "NoActiveDeviceError" as const;
+
+  constructor() {
+    super("No active playback device found. Open Spotify on a device first.");
+  }
+}
