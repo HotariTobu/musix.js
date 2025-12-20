@@ -443,6 +443,9 @@ describe("Core Types", () => {
         getTrack: async (id: string) => {
           throw new Error("Not implemented");
         },
+        getTracks: async (ids: string[]) => {
+          throw new Error("Not implemented");
+        },
         searchTracks: async (query: string, options?: SearchOptions) => {
           throw new Error("Not implemented");
         },

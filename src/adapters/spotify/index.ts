@@ -17,6 +17,7 @@ import {
   NotFoundError,
   RateLimitError,
   SpotifyApiError,
+  ValidationError,
 } from "../../core/errors";
 import type {
   Album,
@@ -342,6 +343,39 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
         },
         "track",
         id,
+      );
+    },
+
+    /**
+     * Retrieves multiple tracks by their Spotify IDs.
+     * @param ids - Array of Spotify track IDs (maximum 50)
+     * @returns Promise resolving to array of Track objects
+     * @throws {ValidationError} If more than 50 IDs are provided
+     */
+    async getTracks(ids: string[]): Promise<Track[]> {
+      // AC-059: Empty array handling - return early without API call
+      if (ids.length === 0) {
+        return [];
+      }
+
+      // AC-002: Validate maximum limit
+      if (ids.length > 50) {
+        throw new ValidationError(
+          `getTracks accepts maximum 50 IDs, received ${ids.length}`,
+        );
+      }
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const spotifyTracks = await sdk.tracks.get(ids);
+          // AC-003: Filter out null values for invalid IDs
+          return spotifyTracks
+            .filter((track): track is SpotifyTrack => track != null)
+            .map(transformTrack);
+        },
+        "track",
+        ids.join(","),
       );
     },
 
