@@ -228,6 +228,10 @@ export interface SpotifyAdapter {
     options?: SearchOptions,
   ): Promise<PaginatedResult<Track>>;
   getPlaylist(id: string): Promise<Playlist>;
+  getPlaylistTracks(
+    playlistId: string,
+    options?: SearchOptions,
+  ): Promise<PaginatedResult<Track>>;
 }
 
 /** Extended adapter with user authentication (PKCE Flow) */

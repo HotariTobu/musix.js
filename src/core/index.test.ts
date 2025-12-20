@@ -496,6 +496,12 @@ describe("Core Types", () => {
         getPlaylist: async (id: string) => {
           throw new Error("Not implemented");
         },
+        getPlaylistTracks: async (
+          playlistId: string,
+          options?: SearchOptions,
+        ): Promise<PaginatedResult<Track>> => {
+          throw new Error("Not implemented");
+        },
       };
 
       expect(adapter.getTrack).toBeDefined();
