@@ -11531,4 +11531,289 @@ describe("createSpotifyUserAdapter", () => {
       }
     });
   });
+
+  describe("AC-037: Follow Artist [CH-026]", () => {
+    test("should add artist to user's followed artists", async () => {
+      // Given: User is authenticated
+      const followArtistsMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          followArtistsOrUsers: followArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-follow-modify"],
+      });
+
+      // When: followArtist(artistId) is called
+      await adapter.followArtist("artist-123");
+
+      // Then: Artist is added to user's followed artists
+      expect(followArtistsMock).toHaveBeenCalledWith(["artist-123"], "artist");
+    });
+
+    test("should handle authentication error", async () => {
+      // Given: User is not authenticated (401 Unauthorized)
+      const error = new Error("Unauthorized") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 401;
+      error.headers = {};
+
+      const followArtistsMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          followArtistsOrUsers: followArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-follow-modify"],
+      });
+
+      // When: followArtist is called without authentication
+      // Then: AuthenticationError is thrown
+      await expect(adapter.followArtist("artist-123")).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should handle rate limit error", async () => {
+      // Given: Rate limit is exceeded (429 Too Many Requests)
+      const error = new Error("Too Many Requests") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 429;
+      error.headers = { "retry-after": "10" };
+
+      const followArtistsMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          followArtistsOrUsers: followArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-follow-modify"],
+      });
+
+      // When: followArtist is called and rate limit is exceeded
+      // Then: RateLimitError is thrown with retryAfter value
+      try {
+        await adapter.followArtist("artist-123");
+        throw new Error("Expected RateLimitError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(RateLimitError);
+        expect((err as RateLimitError).retryAfter).toBe(10);
+      }
+    });
+  });
+
+  describe("AC-038: Unfollow Artist [CH-026]", () => {
+    test("should remove artist from user's followed artists", async () => {
+      // Given: User is authenticated and artist is followed
+      const unfollowArtistsMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          unfollowArtistsOrUsers: unfollowArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-follow-modify"],
+      });
+
+      // When: unfollowArtist(artistId) is called
+      await adapter.unfollowArtist("artist-123");
+
+      // Then: Artist is removed from user's followed artists
+      expect(unfollowArtistsMock).toHaveBeenCalledWith(
+        ["artist-123"],
+        "artist",
+      );
+    });
+
+    test("should handle authentication error", async () => {
+      // Given: User is not authenticated (401 Unauthorized)
+      const error = new Error("Unauthorized") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 401;
+      error.headers = {};
+
+      const unfollowArtistsMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          unfollowArtistsOrUsers: unfollowArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-follow-modify"],
+      });
+
+      // When: unfollowArtist is called without authentication
+      // Then: AuthenticationError is thrown
+      await expect(adapter.unfollowArtist("artist-123")).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should handle rate limit error", async () => {
+      // Given: Rate limit is exceeded (429 Too Many Requests)
+      const error = new Error("Too Many Requests") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 429;
+      error.headers = { "retry-after": "20" };
+
+      const unfollowArtistsMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          unfollowArtistsOrUsers: unfollowArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-follow-modify"],
+      });
+
+      // When: unfollowArtist is called and rate limit is exceeded
+      // Then: RateLimitError is thrown with retryAfter value
+      try {
+        await adapter.unfollowArtist("artist-123");
+        throw new Error("Expected RateLimitError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(RateLimitError);
+        expect((err as RateLimitError).retryAfter).toBe(20);
+      }
+    });
+  });
 });

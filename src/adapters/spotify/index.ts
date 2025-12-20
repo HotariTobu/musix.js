@@ -1333,11 +1333,53 @@ export function createSpotifyUserAdapter(
         throw error;
       }
     },
-    async followArtist() {
-      throw new Error("Not implemented");
+    /**
+     * Adds an artist to the user's followed artists.
+     * @param id - The Spotify artist ID
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {RateLimitError} If rate limit is exceeded
+     */
+    async followArtist(id: string): Promise<void> {
+      try {
+        await sdk.currentUser.followArtistsOrUsers([id], "artist");
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid or expired access token");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+        throw error;
+      }
     },
-    async unfollowArtist() {
-      throw new Error("Not implemented");
+    /**
+     * Removes an artist from the user's followed artists.
+     * @param id - The Spotify artist ID
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {RateLimitError} If rate limit is exceeded
+     */
+    async unfollowArtist(id: string): Promise<void> {
+      try {
+        await sdk.currentUser.unfollowArtistsOrUsers([id], "artist");
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid or expired access token");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+        throw error;
+      }
     },
     /**
      * Gets the current user's playlists.
