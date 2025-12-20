@@ -9,6 +9,7 @@ export type {
   SimplifiedPlaylist,
   SearchOptions,
   SearchResult,
+  PaginatedResult,
   SpotifyConfig,
   SpotifyAdapter,
 } from "./types";
