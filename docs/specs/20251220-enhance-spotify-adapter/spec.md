@@ -71,12 +71,47 @@ The adapter currently supports:
 - [ ] CH-020: Add `getSavedTracks(options?)` method to get user's saved tracks
 - [ ] CH-021: Add `saveTrack(id)` / `removeSavedTrack(id)` methods
 - [ ] CH-022: Add `getUserPlaylists(options?)` method to get user's playlists
+- [ ] CH-023: Add `getSavedAlbums(options?)` method to get user's saved albums
+- [ ] CH-024: Add `saveAlbum(id)` / `removeSavedAlbum(id)` methods
+- [ ] CH-025: Add `getFollowedArtists(options?)` method to get followed artists
+- [ ] CH-026: Add `followArtist(id)` / `unfollowArtist(id)` methods
+
+### Discovery
+
+- [ ] CH-027: Add `getRecommendations(seeds, options?)` method for track recommendations
+- [ ] CH-028: Add `getRelatedArtists(artistId)` method for similar artists
+- [ ] CH-029: Add `getNewReleases(options?)` method for new album releases
+- [ ] CH-030: Add `getRecentlyPlayed(options?)` method for play history
+- [ ] CH-031: Add `getTopTracks(options?)` method for user's top tracks
+- [ ] CH-032: Add `getTopArtists(options?)` method for user's top artists
+
+### Playlist Management
+
+- [ ] CH-033: Add `createPlaylist(name, options?)` method
+- [ ] CH-034: Add `updatePlaylistDetails(playlistId, details)` method
+- [ ] CH-035: Add `addTracksToPlaylist(playlistId, trackIds)` method
+- [ ] CH-036: Add `removeTracksFromPlaylist(playlistId, trackIds)` method
+- [ ] CH-037: Add `getPlaylistTracks(playlistId, options?)` method with pagination
+
+### Extended Playback Control
+
+- [ ] CH-038: Add `setVolume(percent)` method
+- [ ] CH-039: Add `setShuffle(state)` method
+- [ ] CH-040: Add `setRepeat(state)` method
+- [ ] CH-041: Add `getQueue()` method
+- [ ] CH-042: Add `addToQueue(trackId)` method
 
 ## API Changes
 
 ### New Type Definitions
 
-Add the following types to `src/core/types.ts`:
+The following types already exist in `src/core/types.ts` and will be reused:
+- `Image`: Image with url, width, height
+- `User`: User with id, displayName
+- `Artist`, `Album`, `Track`, `Playlist`: Core music types
+- `SearchOptions`, `SearchResult`: Pagination types
+
+Add the following **new** types to `src/core/types.ts`:
 
 ```typescript
 /** Simplified playlist for search results (without full track list) */
@@ -144,6 +179,61 @@ export interface SpotifyUserAuthConfig {
   redirectUri: string;
   scopes: string[];
 }
+
+/** Recommendation seeds */
+export interface RecommendationSeeds {
+  trackIds?: string[];    // Max 5 total seeds
+  artistIds?: string[];
+  genres?: string[];
+}
+
+/** Recommendation options */
+export interface RecommendationOptions {
+  limit?: number;         // Default 20, max 100
+  targetEnergy?: number;  // 0.0 - 1.0
+  targetDanceability?: number;
+  targetValence?: number;
+  targetTempo?: number;
+}
+
+/** Recently played item with timestamp */
+export interface RecentlyPlayedItem {
+  track: Track;
+  playedAt: string;  // ISO 8601 timestamp
+}
+
+/** Time range for top items */
+export type TimeRange = "short_term" | "medium_term" | "long_term";
+
+/** Top items options */
+export interface TopItemsOptions {
+  limit?: number;
+  offset?: number;
+  timeRange?: TimeRange;  // Default: medium_term
+}
+
+/** Playlist creation options */
+export interface CreatePlaylistOptions {
+  description?: string;
+  public?: boolean;       // Default: true
+  collaborative?: boolean;
+}
+
+/** Playlist update details */
+export interface PlaylistDetails {
+  name?: string;
+  description?: string;
+  public?: boolean;
+}
+
+/** Queue state */
+export interface QueueState {
+  currentlyPlaying: Track | null;
+  queue: Track[];
+}
+
+/** Repeat mode */
+export type RepeatMode = "off" | "track" | "context";
 ```
 
 ### Updated SpotifyAdapter Interface
@@ -188,12 +278,44 @@ interface SpotifyUserAdapter extends SpotifyAdapter {
   getPlaybackState(): Promise<PlaybackState | null>;
   getAvailableDevices(): Promise<Device[]>;
   transferPlayback(deviceId: string, play?: boolean): Promise<void>;
+  setVolume(percent: number): Promise<void>;
+  setShuffle(state: boolean): Promise<void>;
+  setRepeat(state: RepeatMode): Promise<void>;
+  getQueue(): Promise<QueueState>;
+  addToQueue(trackId: string): Promise<void>;
 
-  // User library
+  // User library - Tracks
   getSavedTracks(options?: SearchOptions): Promise<PaginatedResult<Track>>;
   saveTrack(id: string): Promise<void>;
   removeSavedTrack(id: string): Promise<void>;
+
+  // User library - Albums
+  getSavedAlbums(options?: SearchOptions): Promise<PaginatedResult<Album>>;
+  saveAlbum(id: string): Promise<void>;
+  removeSavedAlbum(id: string): Promise<void>;
+
+  // User library - Artists
+  getFollowedArtists(options?: SearchOptions): Promise<PaginatedResult<Artist>>;
+  followArtist(id: string): Promise<void>;
+  unfollowArtist(id: string): Promise<void>;
+
+  // User library - Playlists
   getUserPlaylists(options?: SearchOptions): Promise<PaginatedResult<SimplifiedPlaylist>>;
+
+  // Discovery
+  getRecommendations(seeds: RecommendationSeeds, options?: RecommendationOptions): Promise<Track[]>;
+  getRelatedArtists(artistId: string): Promise<Artist[]>;
+  getNewReleases(options?: SearchOptions): Promise<PaginatedResult<Album>>;
+  getRecentlyPlayed(options?: SearchOptions): Promise<PaginatedResult<RecentlyPlayedItem>>;
+  getTopTracks(options?: TopItemsOptions): Promise<PaginatedResult<Track>>;
+  getTopArtists(options?: TopItemsOptions): Promise<PaginatedResult<Artist>>;
+
+  // Playlist management
+  createPlaylist(name: string, options?: CreatePlaylistOptions): Promise<Playlist>;
+  updatePlaylistDetails(playlistId: string, details: PlaylistDetails): Promise<void>;
+  addTracksToPlaylist(playlistId: string, trackIds: string[]): Promise<void>;
+  removeTracksFromPlaylist(playlistId: string, trackIds: string[]): Promise<void>;
+  getPlaylistTracks(playlistId: string, options?: SearchOptions): Promise<PaginatedResult<Track>>;
 }
 ```
 
@@ -261,9 +383,17 @@ const RECOMMENDED_SCOPES = [
   // Library
   "user-library-read",
   "user-library-modify",
+  // Following
+  "user-follow-read",
+  "user-follow-modify",
+  // History and Top Items
+  "user-read-recently-played",
+  "user-top-read",
   // Playlists
   "playlist-read-private",
   "playlist-read-collaborative",
+  "playlist-modify-public",
+  "playlist-modify-private",
 ];
 ```
 
@@ -531,16 +661,216 @@ const RECOMMENDED_SCOPES = [
 - **Then**:
   - Returns `PaginatedResult<SimplifiedPlaylist>` with user's playlists
 
+#### AC-033: Get Saved Albums [CH-023]
+
+- **Given**: User is authenticated
+- **When**: `getSavedAlbums()` is called
+- **Then**:
+  - Returns `PaginatedResult<Album>` with user's saved albums
+
+#### AC-034: Save Album [CH-024]
+
+- **Given**: User is authenticated
+- **When**: `saveAlbum(albumId)` is called
+- **Then**:
+  - Album is added to user's library
+
+#### AC-035: Remove Saved Album [CH-024]
+
+- **Given**: User is authenticated, album is saved
+- **When**: `removeSavedAlbum(albumId)` is called
+- **Then**:
+  - Album is removed from user's library
+
+#### AC-036: Get Followed Artists [CH-025]
+
+- **Given**: User is authenticated
+- **When**: `getFollowedArtists()` is called
+- **Then**:
+  - Returns `PaginatedResult<Artist>` with followed artists
+
+#### AC-037: Follow Artist [CH-026]
+
+- **Given**: User is authenticated
+- **When**: `followArtist(artistId)` is called
+- **Then**:
+  - Artist is added to user's followed artists
+
+#### AC-038: Unfollow Artist [CH-026]
+
+- **Given**: User is authenticated, artist is followed
+- **When**: `unfollowArtist(artistId)` is called
+- **Then**:
+  - Artist is removed from user's followed artists
+
+### Discovery
+
+#### AC-039: Get Recommendations [CH-027]
+
+- **Given**: Valid adapter with authentication
+- **When**: `getRecommendations({ trackIds: ["id1"] })` is called
+- **Then**:
+  - Returns array of Track objects
+  - Maximum 100 tracks (based on limit option)
+
+#### AC-040: Get Recommendations - Invalid Seeds [CH-027]
+
+- **Given**: Valid adapter with authentication
+- **When**: `getRecommendations` is called with more than 5 total seeds
+- **Then**:
+  - Throws `ValidationError` with message about seed limit
+
+#### AC-041: Get Related Artists [CH-028]
+
+- **Given**: Valid adapter with authentication
+- **When**: `getRelatedArtists(artistId)` is called
+- **Then**:
+  - Returns array of Artist objects (up to 20)
+
+#### AC-042: Get New Releases [CH-029]
+
+- **Given**: Valid adapter with authentication
+- **When**: `getNewReleases()` is called
+- **Then**:
+  - Returns `PaginatedResult<Album>` with new album releases
+
+#### AC-043: Get Recently Played [CH-030]
+
+- **Given**: User is authenticated
+- **When**: `getRecentlyPlayed()` is called
+- **Then**:
+  - Returns `PaginatedResult<RecentlyPlayedItem>` with play history
+  - Each item includes `track` and `playedAt` timestamp
+
+#### AC-044: Get Top Tracks [CH-031]
+
+- **Given**: User is authenticated
+- **When**: `getTopTracks()` is called
+- **Then**:
+  - Returns `PaginatedResult<Track>` with user's top tracks
+
+#### AC-045: Get Top Tracks - Time Range [CH-031]
+
+- **Given**: User is authenticated
+- **When**: `getTopTracks({ timeRange: "short_term" })` is called
+- **Then**:
+  - Returns top tracks from approximately the last 4 weeks
+
+#### AC-046: Get Top Artists [CH-032]
+
+- **Given**: User is authenticated
+- **When**: `getTopArtists()` is called
+- **Then**:
+  - Returns `PaginatedResult<Artist>` with user's top artists
+
+### Playlist Management
+
+#### AC-047: Create Playlist [CH-033]
+
+- **Given**: User is authenticated
+- **When**: `createPlaylist("My Playlist")` is called
+- **Then**:
+  - Returns newly created `Playlist` object
+  - Playlist is created in user's library
+
+#### AC-048: Create Playlist with Options [CH-033]
+
+- **Given**: User is authenticated
+- **When**: `createPlaylist("My Playlist", { description: "desc", public: false })` is called
+- **Then**:
+  - Playlist is created with specified options
+
+#### AC-049: Update Playlist Details [CH-034]
+
+- **Given**: User is authenticated and owns the playlist
+- **When**: `updatePlaylistDetails(playlistId, { name: "New Name" })` is called
+- **Then**:
+  - Playlist details are updated
+
+#### AC-050: Add Tracks to Playlist [CH-035]
+
+- **Given**: User is authenticated and can edit the playlist
+- **When**: `addTracksToPlaylist(playlistId, ["trackId1", "trackId2"])` is called
+- **Then**:
+  - Tracks are added to the playlist
+
+#### AC-051: Remove Tracks from Playlist [CH-036]
+
+- **Given**: User is authenticated and can edit the playlist
+- **When**: `removeTracksFromPlaylist(playlistId, ["trackId1"])` is called
+- **Then**:
+  - Specified tracks are removed from the playlist
+
+#### AC-052: Get Playlist Tracks [CH-037]
+
+- **Given**: Valid adapter with authentication
+- **When**: `getPlaylistTracks(playlistId)` is called
+- **Then**:
+  - Returns `PaginatedResult<Track>` with playlist tracks
+
+### Extended Playback Control
+
+#### AC-053: Set Volume [CH-038]
+
+- **Given**: User is authenticated with Premium, playback is active
+- **When**: `setVolume(50)` is called
+- **Then**:
+  - Volume is set to 50%
+
+#### AC-054: Set Volume - Invalid Range [CH-038]
+
+- **Given**: User is authenticated with Premium
+- **When**: `setVolume(150)` is called (out of 0-100 range)
+- **Then**:
+  - Throws `ValidationError`
+
+#### AC-055: Set Shuffle [CH-039]
+
+- **Given**: User is authenticated with Premium, playback is active
+- **When**: `setShuffle(true)` is called
+- **Then**:
+  - Shuffle mode is enabled
+
+#### AC-056: Set Repeat [CH-040]
+
+- **Given**: User is authenticated with Premium, playback is active
+- **When**: `setRepeat("track")` is called
+- **Then**:
+  - Repeat mode is set to repeat current track
+
+#### AC-057: Get Queue [CH-041]
+
+- **Given**: User is authenticated
+- **When**: `getQueue()` is called
+- **Then**:
+  - Returns `QueueState` with `currentlyPlaying` and `queue` array
+
+#### AC-058: Add to Queue [CH-042]
+
+- **Given**: User is authenticated with Premium, playback is active
+- **When**: `addToQueue(trackId)` is called
+- **Then**:
+  - Track is added to the end of the queue
+
+#### AC-052a: Get Playlist Tracks - Pagination [CH-037]
+
+- **Given**: Valid adapter with authentication
+- **When**: `getPlaylistTracks(playlistId, { limit: 50, offset: 100 })` is called
+- **Then**:
+  - Returns tracks starting from offset 100
+  - Maximum 50 tracks returned
+  - `hasNext` indicates if more tracks are available
+
 ### Error Handling
 
-#### AC-031: Empty Array Handling [CH-001, CH-002, CH-003]
+#### AC-059: Empty Array Handling [CH-001, CH-002, CH-003]
 
 - **Given**: Valid adapter with authentication
 - **When**: Batch method is called with empty array `[]`
 - **Then**:
   - Returns empty array `[]` without making API call
 
-#### AC-032: Rate Limit [All]
+#### AC-060: Rate Limit [All]
 
 - **Given**: Rate limit is exceeded
 - **When**: Any method is called
@@ -581,6 +911,28 @@ const RECOMMENDED_SCOPES = [
 | `saveTrack` | `sdk.currentUser.tracks.saveTracks(ids)` |
 | `removeSavedTrack` | `sdk.currentUser.tracks.removeSavedTracks(ids)` |
 | `getUserPlaylists` | `sdk.currentUser.playlists.playlists(limit, offset)` |
+| `getSavedAlbums` | `sdk.currentUser.albums.savedAlbums(limit, offset)` |
+| `saveAlbum` | `sdk.currentUser.albums.saveAlbums(ids)` |
+| `removeSavedAlbum` | `sdk.currentUser.albums.removeSavedAlbums(ids)` |
+| `getFollowedArtists` | `sdk.currentUser.followedArtists(type, limit)` |
+| `followArtist` | `sdk.currentUser.followArtistsOrUsers(ids, "artist")` |
+| `unfollowArtist` | `sdk.currentUser.unfollowArtistsOrUsers(ids, "artist")` |
+| `getRecommendations` | `sdk.recommendations.get(seeds)` |
+| `getRelatedArtists` | `sdk.artists.relatedArtists(artistId)` |
+| `getNewReleases` | `sdk.browse.getNewReleases(country, limit, offset)` |
+| `getRecentlyPlayed` | `sdk.player.getRecentlyPlayedTracks(limit)` |
+| `getTopTracks` | `sdk.currentUser.topItems("tracks", timeRange, limit, offset)` |
+| `getTopArtists` | `sdk.currentUser.topItems("artists", timeRange, limit, offset)` |
+| `createPlaylist` | `sdk.playlists.createPlaylist(userId, details)` |
+| `updatePlaylistDetails` | `sdk.playlists.changePlaylistDetails(playlistId, details)` |
+| `addTracksToPlaylist` | `sdk.playlists.addItemsToPlaylist(playlistId, uris)` |
+| `removeTracksFromPlaylist` | `sdk.playlists.removeItemsFromPlaylist(playlistId, tracks)` |
+| `getPlaylistTracks` | `sdk.playlists.getPlaylistItems(playlistId, market, fields, limit, offset)` |
+| `setVolume` | `sdk.player.setPlaybackVolume(percent, deviceId)` |
+| `setShuffle` | `sdk.player.togglePlaybackShuffle(state, deviceId)` |
+| `setRepeat` | `sdk.player.setRepeatMode(state, deviceId)` |
+| `getQueue` | `sdk.player.getUsersQueue()` |
+| `addToQueue` | `sdk.player.addItemToPlaybackQueue(uri, deviceId)` |
 
 ### Authentication Flow
 
@@ -629,3 +981,5 @@ Requires `@spotify/web-api-ts-sdk` version 1.2.0 or higher for PKCE support.
 | 2025-12-20 | 1.1 | Clarify type definitions, error handling, and batch behavior | - |
 | 2025-12-20 | 1.2 | Add user authentication, playback control, and user library features | - |
 | 2025-12-20 | 1.3 | Add OAuth flow ACs, Premium detection strategy, batch error handling clarification, PlayOptions validation | - |
+| 2025-12-20 | 1.4 | Add all common music service features: recommendations, related artists, new releases, playlist management, saved albums, following, recently played, top items, volume/shuffle/repeat, queue management | - |
+| 2025-12-20 | 1.5 | Fix AC numbering (error handling -> AC-059/AC-060), add playlist tracks pagination AC, clarify existing types | - |
