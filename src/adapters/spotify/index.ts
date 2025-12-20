@@ -1923,8 +1923,53 @@ export function createSpotifyUserAdapter(
         throw new NetworkError(String(error));
       }
     },
-    async removeTracksFromPlaylist() {
-      throw new Error("Not implemented");
+    /**
+     * Removes tracks from a playlist.
+     * @param playlistId - The Spotify playlist ID
+     * @param trackIds - Array of Spotify track IDs to remove
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {NotFoundError} If playlist does not exist
+     * @throws {RateLimitError} If rate limit is exceeded
+     * @throws {NetworkError} If network error occurs
+     */
+    async removeTracksFromPlaylist(
+      playlistId: string,
+      trackIds: string[],
+    ): Promise<void> {
+      // Return early without API call if trackIds array is empty
+      if (trackIds.length === 0) {
+        return;
+      }
+
+      // Convert track IDs to Spotify URIs format
+      const tracks = trackIds.map((id) => ({ uri: `spotify:track:${id}` }));
+
+      try {
+        await sdk.playlists.removeItemsFromPlaylist(playlistId, { tracks });
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid or expired access token");
+          }
+          if (error.status === 404) {
+            throw new NotFoundError("playlist", playlistId);
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+
+        // Handle network errors (errors without status property)
+        if (error instanceof Error) {
+          throw new NetworkError(error.message, error);
+        }
+
+        // Handle non-Error objects
+        throw new NetworkError(String(error));
+      }
     },
     async getPlaylistTracks() {
       throw new Error("Not implemented");
