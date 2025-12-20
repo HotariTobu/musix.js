@@ -10,7 +10,20 @@
     { "id": "CH-006", "passes": false },
     { "id": "CH-007", "passes": false },
     { "id": "CH-008", "passes": false },
-    { "id": "CH-009", "passes": false }
+    { "id": "CH-009", "passes": false },
+    { "id": "CH-010", "passes": false },
+    { "id": "CH-011", "passes": false },
+    { "id": "CH-012", "passes": false },
+    { "id": "CH-013", "passes": false },
+    { "id": "CH-014", "passes": false },
+    { "id": "CH-015", "passes": false },
+    { "id": "CH-016", "passes": false },
+    { "id": "CH-017", "passes": false },
+    { "id": "CH-018", "passes": false },
+    { "id": "CH-019", "passes": false },
+    { "id": "CH-020", "passes": false },
+    { "id": "CH-021", "passes": false },
+    { "id": "CH-022", "passes": false }
   ],
   "blockers": [],
   "notes": ""
