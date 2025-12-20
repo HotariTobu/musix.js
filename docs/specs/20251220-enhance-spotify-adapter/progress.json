@@ -18,7 +18,7 @@
     { "id": "CH-014", "passes": true },
     { "id": "CH-015", "passes": true },
     { "id": "CH-016", "passes": true },
-    { "id": "CH-017", "passes": false },
+    { "id": "CH-017", "passes": true },
     { "id": "CH-018", "passes": false },
     { "id": "CH-019", "passes": false },
     { "id": "CH-020", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "CH-016 (seek) complete. Implemented with AC-023 tests (3 total). Calls sdk.player.seekToPosition(positionMs, deviceId) with empty string for deviceId, handles 403 as PremiumRequiredError and 404 as NoActiveDeviceError. Next session should continue with CH-017 (getPlaybackState)."
+  "notes": "CH-017 (getPlaybackState) complete. Implemented with AC-024 tests (3 total). Returns PlaybackState with isPlaying, track, progressMs, durationMs, device, shuffleState, repeatState. Returns null when no active playback. Detects tracks by checking for 'album' property. Next session should continue with CH-018 (getAvailableDevices)."
 }
