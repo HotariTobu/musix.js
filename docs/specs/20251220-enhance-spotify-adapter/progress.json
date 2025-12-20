@@ -19,7 +19,7 @@
     { "id": "CH-015", "passes": true },
     { "id": "CH-016", "passes": true },
     { "id": "CH-017", "passes": true },
-    { "id": "CH-018", "passes": false },
+    { "id": "CH-018", "passes": true },
     { "id": "CH-019", "passes": false },
     { "id": "CH-020", "passes": false },
     { "id": "CH-021", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "CH-017 (getPlaybackState) complete. Implemented with AC-024 tests (3 total). Returns PlaybackState with isPlaying, track, progressMs, durationMs, device, shuffleState, repeatState. Returns null when no active playback. Detects tracks by checking for 'album' property. Next session should continue with CH-018 (getAvailableDevices)."
+  "notes": "CH-018 (getAvailableDevices) complete. Implemented with AC-025 tests (3 total). Returns Device[] with id, name, type, isActive, volumePercent. Handles empty device list. Maps snake_case to camelCase with null-safe defaults (name ?? 'Unknown Device', type ?? 'Unknown'). Next session should continue with CH-019 (transferPlayback)."
 }
