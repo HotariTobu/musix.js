@@ -1180,8 +1180,55 @@ export function createSpotifyUserAdapter(
         throw error;
       }
     },
-    async getSavedAlbums() {
-      throw new Error("Not implemented");
+    /**
+     * Gets albums saved in the user's library.
+     * @param options - Optional pagination options (limit, offset)
+     * @returns PaginatedResult containing user's saved albums
+     * @throws {AuthenticationError} If user is not authenticated
+     * @throws {RateLimitError} If rate limit is exceeded
+     */
+    async getSavedAlbums(
+      options?: SearchOptions,
+    ): Promise<PaginatedResult<Album>> {
+      // Apply default values and constraints
+      // Limit is capped at 50 (Spotify API max), cast to SDK's expected literal union type
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      try {
+        // Call Spotify SDK to get saved albums
+        const response = await sdk.currentUser.albums.savedAlbums(
+          limit,
+          offset,
+        );
+
+        // Transform saved album items to musix.js Album type
+        const albums = response.items.map((item) => transformAlbum(item.album));
+
+        // Calculate hasNext based on whether there are more items
+        const hasNext = offset + response.items.length < response.total;
+
+        return {
+          items: albums,
+          total: response.total,
+          limit,
+          offset,
+          hasNext,
+        };
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 401) {
+            throw new AuthenticationError("Invalid or expired access token");
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+        throw error;
+      }
     },
     async saveAlbum() {
       throw new Error("Not implemented");
