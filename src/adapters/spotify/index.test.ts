@@ -10269,4 +10269,432 @@ describe("createSpotifyUserAdapter", () => {
       }
     });
   });
+
+  describe("AC-033: Get Saved Albums [CH-023]", () => {
+    test("should return PaginatedResult<Album> with user's saved albums", async () => {
+      // Given: User is authenticated and has saved albums
+      const mockSavedAlbums = {
+        items: [
+          {
+            added_at: "2024-01-15T10:00:00Z",
+            album: {
+              id: "album-001",
+              name: "Abbey Road",
+              release_date: "1969-09-26",
+              total_tracks: 17,
+              images: [
+                {
+                  url: "https://i.scdn.co/image/album001",
+                  width: 640,
+                  height: 640,
+                },
+              ],
+              external_urls: {
+                spotify: "https://open.spotify.com/album/album-001",
+              },
+              artists: [
+                {
+                  id: "artist-001",
+                  name: "The Beatles",
+                  external_urls: {
+                    spotify: "https://open.spotify.com/artist/artist-001",
+                  },
+                },
+              ],
+            },
+          },
+          {
+            added_at: "2024-01-16T14:30:00Z",
+            album: {
+              id: "album-002",
+              name: "Dark Side of the Moon",
+              release_date: "1973-03-01",
+              total_tracks: 10,
+              images: [
+                {
+                  url: "https://i.scdn.co/image/album002",
+                  width: 640,
+                  height: 640,
+                },
+              ],
+              external_urls: {
+                spotify: "https://open.spotify.com/album/album-002",
+              },
+              artists: [
+                {
+                  id: "artist-002",
+                  name: "Pink Floyd",
+                  external_urls: {
+                    spotify: "https://open.spotify.com/artist/artist-002",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        total: 100,
+        limit: 20,
+        offset: 0,
+      };
+
+      const savedAlbumsMock = mock(async () => mockSavedAlbums);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          albums: {
+            savedAlbums: savedAlbumsMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-read"],
+      });
+
+      // When: getSavedAlbums() is called
+      const result = await adapter.getSavedAlbums();
+
+      // Then: Returns PaginatedResult<Album> with user's saved albums
+      expect(result).toBeObject();
+      expect(result.items).toBeArray();
+      expect(result.items).toHaveLength(2);
+      expect(result.total).toBe(100);
+      expect(result.limit).toBe(20);
+      expect(result.offset).toBe(0);
+      expect(result.hasNext).toBe(true); // offset (0) + items.length (2) < total (100)
+
+      // Verify first album
+      expect(result.items[0].id).toBe("album-001");
+      expect(result.items[0].name).toBe("Abbey Road");
+      expect(result.items[0].releaseDate).toBe("1969-09-26");
+      expect(result.items[0].totalTracks).toBe(17);
+      expect(result.items[0].artists[0].name).toBe("The Beatles");
+
+      // Verify second album
+      expect(result.items[1].id).toBe("album-002");
+      expect(result.items[1].name).toBe("Dark Side of the Moon");
+      expect(result.items[1].releaseDate).toBe("1973-03-01");
+      expect(result.items[1].totalTracks).toBe(10);
+      expect(result.items[1].artists[0].name).toBe("Pink Floyd");
+
+      // Verify SDK method was called with default parameters
+      expect(savedAlbumsMock).toHaveBeenCalledWith(20, 0);
+    });
+
+    test("should return saved albums with custom limit and offset", async () => {
+      // Given: User is authenticated
+      const mockSavedAlbums = {
+        items: [
+          {
+            added_at: "2024-01-20T10:00:00Z",
+            album: {
+              id: "album-101",
+              name: "Test Album 101",
+              release_date: "2024-01-01",
+              total_tracks: 12,
+              images: [
+                {
+                  url: "https://i.scdn.co/image/album101",
+                  width: 640,
+                  height: 640,
+                },
+              ],
+              external_urls: {
+                spotify: "https://open.spotify.com/album/album-101",
+              },
+              artists: [
+                {
+                  id: "artist-101",
+                  name: "Test Artist",
+                  external_urls: {
+                    spotify: "https://open.spotify.com/artist/artist-101",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        total: 100,
+        limit: 10,
+        offset: 50,
+      };
+
+      const savedAlbumsMock = mock(async () => mockSavedAlbums);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          albums: {
+            savedAlbums: savedAlbumsMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-read"],
+      });
+
+      // When: getSavedAlbums({ limit: 10, offset: 50 }) is called
+      const result = await adapter.getSavedAlbums({ limit: 10, offset: 50 });
+
+      // Then: Returns results starting from offset 50 with limit 10
+      expect(result.items).toHaveLength(1);
+      expect(result.total).toBe(100);
+      expect(result.limit).toBe(10);
+      expect(result.offset).toBe(50);
+      expect(result.hasNext).toBe(true); // offset (50) + items.length (1) < total (100)
+
+      // Verify SDK method was called with custom parameters
+      expect(savedAlbumsMock).toHaveBeenCalledWith(10, 50);
+    });
+
+    test("should correctly calculate hasNext as true when more albums exist", async () => {
+      // Given: User is authenticated with pagination scenario where more albums exist
+      const mockSavedAlbums = {
+        items: [
+          {
+            added_at: "2024-01-20T10:00:00Z",
+            album: {
+              id: "album-101",
+              name: "Test Album",
+              release_date: "2024-01-01",
+              total_tracks: 10,
+              images: [
+                {
+                  url: "https://i.scdn.co/image/album101",
+                  width: 640,
+                  height: 640,
+                },
+              ],
+              external_urls: {
+                spotify: "https://open.spotify.com/album/album-101",
+              },
+              artists: [
+                {
+                  id: "artist-101",
+                  name: "Test Artist",
+                  external_urls: {
+                    spotify: "https://open.spotify.com/artist/artist-101",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        total: 80,
+        limit: 20,
+        offset: 40,
+      };
+
+      const savedAlbumsMock = mock(async () => mockSavedAlbums);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          albums: {
+            savedAlbums: savedAlbumsMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-read"],
+      });
+
+      // When: getSavedAlbums() is called
+      const result = await adapter.getSavedAlbums({ limit: 20, offset: 40 });
+
+      // Then: hasNext is true because offset (40) + items.length (1) = 41 < total (80)
+      expect(result.hasNext).toBe(true);
+      expect(result.offset).toBe(40);
+      expect(result.total).toBe(80);
+      expect(result.items).toHaveLength(1);
+    });
+
+    test("should correctly calculate hasNext as false when no more albums exist", async () => {
+      // Given: User is authenticated at the end of pagination
+      const mockSavedAlbums = {
+        items: [
+          {
+            added_at: "2024-01-20T10:00:00Z",
+            album: {
+              id: "album-100",
+              name: "Last Album",
+              release_date: "2024-01-01",
+              total_tracks: 10,
+              images: [
+                {
+                  url: "https://i.scdn.co/image/album100",
+                  width: 640,
+                  height: 640,
+                },
+              ],
+              external_urls: {
+                spotify: "https://open.spotify.com/album/album-100",
+              },
+              artists: [
+                {
+                  id: "artist-101",
+                  name: "Test Artist",
+                  external_urls: {
+                    spotify: "https://open.spotify.com/artist/artist-101",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        total: 100,
+        limit: 20,
+        offset: 99,
+      };
+
+      const savedAlbumsMock = mock(async () => mockSavedAlbums);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          albums: {
+            savedAlbums: savedAlbumsMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-read"],
+      });
+
+      // When: getSavedAlbums() is called at the last page
+      const result = await adapter.getSavedAlbums({ limit: 20, offset: 99 });
+
+      // Then: hasNext is false because offset (99) + items.length (1) = 100 >= total (100)
+      expect(result.hasNext).toBe(false);
+      expect(result.offset).toBe(99);
+      expect(result.total).toBe(100);
+      expect(result.items).toHaveLength(1);
+    });
+
+    test("should return empty items array when user has no saved albums", async () => {
+      // Given: User is authenticated but has no saved albums
+      const mockSavedAlbums = {
+        items: [],
+        total: 0,
+        limit: 20,
+        offset: 0,
+      };
+
+      const savedAlbumsMock = mock(async () => mockSavedAlbums);
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+          albums: {
+            savedAlbums: savedAlbumsMock,
+          },
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-library-read"],
+      });
+
+      // When: getSavedAlbums() is called
+      const result = await adapter.getSavedAlbums();
+
+      // Then: Returns empty PaginatedResult
+      expect(result.items).toBeArray();
+      expect(result.items).toHaveLength(0);
+      expect(result.total).toBe(0);
+      expect(result.limit).toBe(20);
+      expect(result.offset).toBe(0);
+      expect(result.hasNext).toBe(false);
+      expect(savedAlbumsMock).toHaveBeenCalledWith(20, 0);
+    });
+  });
 });
