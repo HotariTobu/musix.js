@@ -2,7 +2,7 @@
   "phase": "in_progress",
   "lastUpdated": "2025-12-20",
   "requirements": [
-    { "id": "FR-001", "passes": false },
+    { "id": "FR-001", "passes": true },
     { "id": "FR-002", "passes": false },
     { "id": "FR-003", "passes": false },
     { "id": "FR-004", "passes": false },
@@ -13,5 +13,5 @@
     { "id": "NFR-003", "passes": false }
   ],
   "blockers": [],
-  "notes": "FR-001 split into sub-tasks: FR-001a (project init - DONE), FR-001b (core types - DONE), FR-001c (adapter impl). Next: FR-001c."
+  "notes": "FR-001 complete. createSpotifyAdapter factory implemented with @spotify/web-api-ts-sdk. Methods are stubs. Next: FR-002 (getTrack)."
 }
