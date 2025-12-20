@@ -2019,3 +2019,517 @@ describe("getAlbum", () => {
     });
   });
 });
+
+// AC-007: Artist Retrieval [FR-005]
+describe("getArtist", () => {
+  // Mock Spotify SDK artist response data
+  const createMockSpotifyArtist = (
+    overrides: Record<string, unknown> = {},
+  ) => ({
+    id: "0ECwFtbIWEVNwjlrfc6xoL",
+    name: "Eagles",
+    genres: ["rock", "soft rock", "country rock"],
+    external_urls: {
+      spotify: "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+    },
+    images: [
+      { url: "https://i.scdn.co/image/artist123", width: 640, height: 640 },
+      { url: "https://i.scdn.co/image/artist456", width: 320, height: 320 },
+      { url: "https://i.scdn.co/image/artist789", width: 160, height: 160 },
+    ],
+    ...overrides,
+  });
+
+  // Create mock SDK with configurable behavior for artists
+  const createMockSdkForArtist = (
+    artistData: unknown = createMockSpotifyArtist(),
+    shouldThrow = false,
+    errorStatus = 404,
+  ) => {
+    const mockGet = mock(async (id: string) => {
+      if (shouldThrow) {
+        const error = new Error("Not found") as Error & { status: number };
+        error.status = errorStatus;
+        throw error;
+      }
+      return artistData;
+    });
+
+    return {
+      artists: { get: mockGet },
+    };
+  };
+
+  // Helper to create adapter with mocked SDK for artists
+  const createMockedAdapterForArtist = (
+    mockSdk: ReturnType<typeof createMockSdkForArtist>,
+  ) => {
+    SpotifyApi.withClientCredentials = mock(
+      () =>
+        mockSdk as unknown as ReturnType<
+          typeof SpotifyApi.withClientCredentials
+        >,
+    );
+    const config: SpotifyConfig = {
+      clientId: "test-client-id",
+      clientSecret: "test-client-secret",
+    };
+    return createSpotifyAdapter(config);
+  };
+
+  describe("Successful Artist Retrieval", () => {
+    // AC-007: Given valid auth config, When existing artist ID, Then returns Artist object
+    test("should return Artist object with all required properties when artist exists", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForArtist();
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: getArtist is called with existing artist ID
+      const artistId = "0ECwFtbIWEVNwjlrfc6xoL"; // Eagles
+      const artist = await adapter.getArtist(artistId);
+
+      // Then: Artist object is returned with required properties
+      expect(artist).toBeDefined();
+      expect(artist.id).toBe(artistId);
+      expect(typeof artist.name).toBe("string");
+      expect(artist.name.length).toBeGreaterThan(0);
+      expect(typeof artist.externalUrl).toBe("string");
+      expect(artist.externalUrl.length).toBeGreaterThan(0);
+    });
+
+    // AC-007: id, name, externalUrl are non-null strings
+    test("should return Artist with id, name, externalUrl as non-null strings", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForArtist();
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: getArtist is called
+      const artist = await adapter.getArtist("0ECwFtbIWEVNwjlrfc6xoL");
+
+      // Then: id, name, externalUrl are non-null strings
+      expect(typeof artist.id).toBe("string");
+      expect(artist.id.length).toBeGreaterThan(0);
+      expect(typeof artist.name).toBe("string");
+      expect(artist.name.length).toBeGreaterThan(0);
+      expect(typeof artist.externalUrl).toBe("string");
+      expect(artist.externalUrl.length).toBeGreaterThan(0);
+    });
+
+    // AC-007: Complete Artist type structure validation
+    test("should return Artist conforming to Artist type", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForArtist();
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: getArtist is called
+      const artist = await adapter.getArtist("0ECwFtbIWEVNwjlrfc6xoL");
+
+      // Then: Artist conforms to Artist interface
+      // Required string properties
+      expect(typeof artist.id).toBe("string");
+      expect(typeof artist.name).toBe("string");
+      expect(typeof artist.externalUrl).toBe("string");
+
+      // Optional genres array
+      if (artist.genres !== undefined) {
+        expect(Array.isArray(artist.genres)).toBe(true);
+        for (const genre of artist.genres) {
+          expect(typeof genre).toBe("string");
+        }
+      }
+
+      // Optional images array
+      if (artist.images !== undefined) {
+        expect(Array.isArray(artist.images)).toBe(true);
+        for (const image of artist.images) {
+          expect(typeof image.url).toBe("string");
+          expect(image.width === null || typeof image.width === "number").toBe(
+            true,
+          );
+          expect(
+            image.height === null || typeof image.height === "number",
+          ).toBe(true);
+        }
+      }
+    });
+
+    // AC-007: Artist with genres
+    test("should return Artist with genres array when available", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForArtist();
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: getArtist is called
+      const artist = await adapter.getArtist("0ECwFtbIWEVNwjlrfc6xoL");
+
+      // Then: genres array is included
+      expect(artist.genres).toBeDefined();
+      expect(Array.isArray(artist.genres)).toBe(true);
+      if (artist.genres && artist.genres.length > 0) {
+        for (const genre of artist.genres) {
+          expect(typeof genre).toBe("string");
+          expect(genre.length).toBeGreaterThan(0);
+        }
+      }
+    });
+
+    // AC-007: Artist with images
+    test("should return Artist with images array when available", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForArtist();
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: getArtist is called
+      const artist = await adapter.getArtist("0ECwFtbIWEVNwjlrfc6xoL");
+
+      // Then: images array is included
+      expect(artist.images).toBeDefined();
+      expect(Array.isArray(artist.images)).toBe(true);
+
+      // If images exist, validate structure
+      if (artist.images && artist.images.length > 0) {
+        for (const image of artist.images) {
+          expect(typeof image.url).toBe("string");
+          expect(image.width === null || typeof image.width === "number").toBe(
+            true,
+          );
+          expect(
+            image.height === null || typeof image.height === "number",
+          ).toBe(true);
+        }
+      }
+    });
+
+    // AC-007: Multiple images with different sizes
+    test("should return Artist with multiple images of different sizes", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForArtist();
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: getArtist is called
+      const artist = await adapter.getArtist("0ECwFtbIWEVNwjlrfc6xoL");
+
+      // Then: images array contains multiple images with different sizes
+      if (artist.images) {
+        expect(artist.images.length).toBeGreaterThan(0);
+        const imageSizes = artist.images.map((img) => img.width);
+        expect(imageSizes).toContain(640);
+        expect(imageSizes).toContain(320);
+        expect(imageSizes).toContain(160);
+      }
+    });
+
+    // AC-007: Artist with no genres (edge case)
+    test("should handle artists with empty genres array", async () => {
+      // Given: valid authentication config with mocked SDK returning no genres
+      const mockArtist = createMockSpotifyArtist({ genres: [] });
+      const mockSdk = createMockSdkForArtist(mockArtist);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: getArtist is called for artist without genres
+      const artist = await adapter.getArtist("artist-without-genres");
+
+      // Then: genres is an empty array or undefined
+      if (artist.genres !== undefined) {
+        expect(Array.isArray(artist.genres)).toBe(true);
+        expect(artist.genres.length).toBe(0);
+      }
+    });
+
+    // AC-007: Artist with no images (edge case)
+    test("should handle artists with empty images array", async () => {
+      // Given: valid authentication config with mocked SDK returning no images
+      const mockArtist = createMockSpotifyArtist({ images: [] });
+      const mockSdk = createMockSdkForArtist(mockArtist);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: getArtist is called for artist without images
+      const artist = await adapter.getArtist("artist-without-images");
+
+      // Then: images is an empty array or undefined
+      if (artist.images !== undefined) {
+        expect(Array.isArray(artist.images)).toBe(true);
+        expect(artist.images.length).toBe(0);
+      }
+    });
+
+    // AC-007: External URL format validation
+    test("should return Artist with valid Spotify external URL", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForArtist();
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: getArtist is called
+      const artist = await adapter.getArtist("0ECwFtbIWEVNwjlrfc6xoL");
+
+      // Then: external URL should be valid Spotify URL
+      expect(artist.externalUrl).toContain("spotify.com");
+      expect(artist.externalUrl).toContain("artist");
+    });
+
+    // AC-007: Multiple genres
+    test("should handle artists with multiple genres", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockArtist = createMockSpotifyArtist({
+        genres: ["rock", "soft rock", "country rock", "classic rock"],
+      });
+      const mockSdk = createMockSdkForArtist(mockArtist);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: getArtist is called
+      const artist = await adapter.getArtist("multi-genre-artist");
+
+      // Then: all genres are included
+      expect(artist.genres).toBeDefined();
+      if (artist.genres) {
+        expect(artist.genres.length).toBe(4);
+        expect(artist.genres).toContain("rock");
+        expect(artist.genres).toContain("soft rock");
+        expect(artist.genres).toContain("country rock");
+        expect(artist.genres).toContain("classic rock");
+      }
+    });
+  });
+
+  describe("Error Handling - Not Found", () => {
+    // AC-007 Error: Given valid auth, When non-existent artist ID, Then throws NotFoundError
+    test("should throw NotFoundError when artist does not exist", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForArtist(undefined, true, 404);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When/Then: calling getArtist with non-existent ID throws NotFoundError
+      const nonExistentId = "invalid-artist-id-12345";
+      await expect(adapter.getArtist(nonExistentId)).rejects.toThrow(
+        NotFoundError,
+      );
+    });
+
+    // AC-007 Error: resourceType is "artist"
+    test("should throw NotFoundError with resourceType='artist'", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForArtist(undefined, true, 404);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: calling getArtist with non-existent ID
+      const nonExistentId = "invalid-artist-id-12345";
+
+      // Then: error has resourceType='artist'
+      try {
+        await adapter.getArtist(nonExistentId);
+        throw new Error("Expected NotFoundError to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NotFoundError);
+        if (error instanceof NotFoundError) {
+          expect(error.resourceType).toBe("artist");
+        }
+      }
+    });
+
+    // AC-007 Error: resourceId is the specified ID
+    test("should throw NotFoundError with correct resourceId", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForArtist(undefined, true, 404);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: calling getArtist with non-existent ID
+      const nonExistentId = "test-invalid-artist-999";
+
+      // Then: error has resourceId set to the requested ID
+      try {
+        await adapter.getArtist(nonExistentId);
+        throw new Error("Expected NotFoundError to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NotFoundError);
+        if (error instanceof NotFoundError) {
+          expect(error.resourceId).toBe(nonExistentId);
+        }
+      }
+    });
+
+    // AC-007 Error: Error message format
+    test("should throw NotFoundError with formatted error message", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForArtist(undefined, true, 404);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: calling getArtist with non-existent ID
+      const nonExistentId = "missing-artist-123";
+
+      // Then: error message contains artist and ID
+      try {
+        await adapter.getArtist(nonExistentId);
+        throw new Error("Expected NotFoundError to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NotFoundError);
+        if (error instanceof NotFoundError) {
+          expect(error.message).toContain("artist");
+          expect(error.message).toContain(nonExistentId);
+        }
+      }
+    });
+
+    // AC-007 Error: NotFoundError is catchable with instanceof
+    test("should be catchable using instanceof NotFoundError", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForArtist(undefined, true, 404);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When/Then: can catch using instanceof
+      try {
+        await adapter.getArtist("non-existent-id");
+        throw new Error("Expected NotFoundError to be thrown");
+      } catch (error) {
+        const isNotFoundError = error instanceof NotFoundError;
+        expect(isNotFoundError).toBe(true);
+      }
+    });
+  });
+
+  describe("Edge Cases", () => {
+    // Edge case: Empty string ID
+    test("should handle empty string artist ID gracefully", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404 for empty ID
+      const mockSdk = createMockSdkForArtist(undefined, true, 404);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When/Then: calling with empty string should throw error
+      await expect(adapter.getArtist("")).rejects.toThrow();
+    });
+
+    // Edge case: Very long ID string
+    test("should handle very long artist ID strings", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForArtist(undefined, true, 404);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: calling with very long ID
+      const longId = "a".repeat(1000);
+
+      // Then: should handle gracefully (likely NotFoundError)
+      await expect(adapter.getArtist(longId)).rejects.toThrow();
+    });
+
+    // Edge case: Special characters in ID
+    test("should handle artist IDs with special characters", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForArtist(undefined, true, 404);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: calling with special characters
+      const specialId = "artist-!@#$%^&*()";
+
+      // Then: should handle gracefully
+      await expect(adapter.getArtist(specialId)).rejects.toThrow();
+    });
+
+    // Edge case: Whitespace in ID
+    test("should handle artist IDs with whitespace", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForArtist(undefined, true, 404);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: calling with whitespace
+      const idWithSpaces = "  artist-id-with-spaces  ";
+
+      // Then: should handle gracefully
+      await expect(adapter.getArtist(idWithSpaces)).rejects.toThrow();
+    });
+
+    // Edge case: Artist with single genre
+    test("should handle artists with single genre", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockArtist = createMockSpotifyArtist({ genres: ["rock"] });
+      const mockSdk = createMockSdkForArtist(mockArtist);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: getArtist is called for artist with single genre
+      const artist = await adapter.getArtist("single-genre-artist");
+
+      // Then: genres array contains one genre
+      expect(artist.genres).toBeDefined();
+      if (artist.genres) {
+        expect(artist.genres.length).toBe(1);
+        expect(artist.genres[0]).toBe("rock");
+      }
+    });
+
+    // Edge case: Artist with undefined genres
+    test("should handle artists with undefined genres", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockArtist = createMockSpotifyArtist({ genres: undefined });
+      const mockSdk = createMockSdkForArtist(mockArtist);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: getArtist is called for artist without genres
+      const artist = await adapter.getArtist("artist-no-genres");
+
+      // Then: genres is undefined
+      expect(artist.genres).toBeUndefined();
+    });
+
+    // Edge case: Artist with undefined images
+    test("should handle artists with undefined images", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockArtist = createMockSpotifyArtist({ images: undefined });
+      const mockSdk = createMockSdkForArtist(mockArtist);
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: getArtist is called for artist without images
+      const artist = await adapter.getArtist("artist-no-images");
+
+      // Then: images is undefined
+      expect(artist.images).toBeUndefined();
+    });
+  });
+
+  describe("Multiple Calls", () => {
+    // Verify multiple calls work independently
+    test("should handle multiple sequential getArtist calls", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForArtist();
+      const adapter = createMockedAdapterForArtist(mockSdk);
+
+      // When: calling getArtist multiple times
+      const artist1 = await adapter.getArtist("0ECwFtbIWEVNwjlrfc6xoL");
+      const artist2 = await adapter.getArtist("0ECwFtbIWEVNwjlrfc6xoL");
+
+      // Then: both calls succeed
+      expect(artist1).toBeDefined();
+      expect(artist2).toBeDefined();
+      expect(artist1.id).toBe(artist2.id);
+    });
+
+    // Verify different artist IDs work
+    test("should retrieve different artists with different IDs", async () => {
+      // Given: valid authentication config with mocked SDK returning dynamic ID
+      const mockGet = mock(async (id: string) => {
+        return createMockSpotifyArtist({ id });
+      });
+      SpotifyApi.withClientCredentials = mock(
+        () =>
+          ({
+            artists: { get: mockGet },
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+      const config: SpotifyConfig = {
+        clientId: "test-client-id",
+        clientSecret: "test-client-secret",
+      };
+      const adapter = createSpotifyAdapter(config);
+
+      // When: calling getArtist with different IDs
+      const artistId1 = "0ECwFtbIWEVNwjlrfc6xoL";
+      const artistId2 = "different-artist-id";
+
+      const artist1 = await adapter.getArtist(artistId1);
+      const artist2 = await adapter.getArtist(artistId2);
+
+      // Then: both calls succeed with correct IDs
+      expect(artist1).toBeDefined();
+      expect(artist1.id).toBe(artistId1);
+      expect(artist2).toBeDefined();
+      expect(artist2.id).toBe(artistId2);
+    });
+  });
+});
