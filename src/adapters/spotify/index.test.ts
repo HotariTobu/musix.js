@@ -5751,4 +5751,258 @@ describe("Token Auto Refresh [NFR-003]", () => {
       });
     });
   });
+
+  describe("searchPlaylists", () => {
+    // Helper to create mock Spotify simplified playlist for search
+    const createMockPlaylist = (overrides: Record<string, unknown> = {}) => ({
+      id: "playlist-id",
+      name: "Test Playlist",
+      description: "A test playlist",
+      owner: {
+        id: "owner-id",
+        display_name: "Test Owner",
+      },
+      tracks: {
+        total: 50,
+      },
+      images: [
+        { url: "https://i.scdn.co/image/abc123", width: 300, height: 300 },
+      ],
+      external_urls: {
+        spotify: "https://open.spotify.com/playlist/playlist-id",
+      },
+      ...overrides,
+    });
+
+    // Helper to create mock search response
+    const createMockSearchResponse = (
+      total: number,
+      limit: number,
+      offset: number,
+      items: unknown[] = [],
+    ) => ({
+      playlists: {
+        items,
+        total,
+        limit,
+        offset,
+        href: `https://api.spotify.com/v1/search?query=test&type=playlist&offset=${offset}&limit=${limit}`,
+        next: offset + limit < total ? "next-page-url" : null,
+        previous: offset > 0 ? "previous-page-url" : null,
+      },
+    });
+
+    // AC-010: Search Playlists
+    describe("AC-010: Search Playlists", () => {
+      test("should return SearchResult<SimplifiedPlaylist> object with items, total, limit, offset", async () => {
+        // Given: Valid adapter with authentication
+        const mockPlaylist = createMockPlaylist();
+        const mockResponse = createMockSearchResponse(100, 20, 0, [
+          mockPlaylist,
+        ]);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              search: mock(async () => mockResponse),
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: searchPlaylists is called with query
+        const result = await adapter.searchPlaylists("workout");
+
+        // Then: SearchResult<SimplifiedPlaylist> object is returned with all required properties
+        expect(result).toBeDefined();
+        expect(Array.isArray(result.items)).toBe(true);
+        expect(typeof result.total).toBe("number");
+        expect(typeof result.limit).toBe("number");
+        expect(typeof result.offset).toBe("number");
+      });
+
+      test("should return items as SimplifiedPlaylist array with totalTracks", async () => {
+        // Given: Valid adapter with authentication
+        const mockPlaylist1 = createMockPlaylist({
+          id: "playlist1",
+          name: "Workout Mix",
+          tracks: { total: 25 },
+        });
+        const mockPlaylist2 = createMockPlaylist({
+          id: "playlist2",
+          name: "Running Playlist",
+          tracks: { total: 100 },
+        });
+        const mockResponse = createMockSearchResponse(2, 20, 0, [
+          mockPlaylist1,
+          mockPlaylist2,
+        ]);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              search: mock(async () => mockResponse),
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: searchPlaylists is called
+        const result = await adapter.searchPlaylists("workout");
+
+        // Then: items array contains SimplifiedPlaylist objects with totalTracks
+        expect(result.items.length).toBe(2);
+        expect(result.items[0].id).toBe("playlist1");
+        expect(result.items[0].name).toBe("Workout Mix");
+        expect(result.items[0].totalTracks).toBe(25);
+        expect(result.items[1].id).toBe("playlist2");
+        expect(result.items[1].totalTracks).toBe(100);
+        expect(result.items[0].externalUrl).toBeDefined();
+      });
+
+      test("should pass query and playlist type to SDK search method", async () => {
+        // Given: Valid adapter with authentication
+        const mockResponse = createMockSearchResponse(0, 20, 0, []);
+        const searchMock = mock(async () => mockResponse);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              search: searchMock,
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: searchPlaylists is called
+        await adapter.searchPlaylists("workout");
+
+        // Then: SDK search is called with playlist type
+        expect(searchMock).toHaveBeenCalledWith(
+          "workout",
+          ["playlist"],
+          undefined,
+          20,
+          0,
+        );
+      });
+
+      test("should respect limit option", async () => {
+        // Given: Valid adapter with authentication
+        const mockResponse = createMockSearchResponse(100, 10, 0, []);
+        const searchMock = mock(async () => mockResponse);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              search: searchMock,
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: searchPlaylists is called with limit option
+        await adapter.searchPlaylists("test", { limit: 10 });
+
+        // Then: SDK search is called with specified limit
+        expect(searchMock).toHaveBeenCalledWith(
+          "test",
+          ["playlist"],
+          undefined,
+          10,
+          0,
+        );
+      });
+
+      test("should respect offset option", async () => {
+        // Given: Valid adapter with authentication
+        const mockResponse = createMockSearchResponse(100, 20, 40, []);
+        const searchMock = mock(async () => mockResponse);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              search: searchMock,
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: searchPlaylists is called with offset option
+        await adapter.searchPlaylists("test", { offset: 40 });
+
+        // Then: SDK search is called with specified offset
+        expect(searchMock).toHaveBeenCalledWith(
+          "test",
+          ["playlist"],
+          undefined,
+          20,
+          40,
+        );
+      });
+
+      test("should cap limit at 50", async () => {
+        // Given: Valid adapter with authentication
+        const mockResponse = createMockSearchResponse(100, 50, 0, []);
+        const searchMock = mock(async () => mockResponse);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              search: searchMock,
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: searchPlaylists is called with limit > 50
+        await adapter.searchPlaylists("test", { limit: 100 });
+
+        // Then: SDK search is called with limit capped at 50
+        expect(searchMock).toHaveBeenCalledWith(
+          "test",
+          ["playlist"],
+          undefined,
+          50,
+          0,
+        );
+      });
+    });
+  });
 });

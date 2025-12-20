@@ -9,6 +9,7 @@ import type {
   PlaylistedTrack as SpotifyPlaylistedTrack,
   SimplifiedAlbum as SpotifySimplifiedAlbum,
   SimplifiedArtist as SpotifySimplifiedArtist,
+  SimplifiedPlaylist as SpotifySimplifiedPlaylist,
   Track as SpotifyTrack,
 } from "@spotify/web-api-ts-sdk";
 import {
@@ -26,6 +27,7 @@ import type {
   Playlist,
   SearchOptions,
   SearchResult,
+  SimplifiedPlaylist,
   SpotifyAdapter,
   SpotifyConfig,
   Track,
@@ -201,6 +203,30 @@ function transformPlaylist(playlist: SpotifyPlaylist<SpotifyTrack>): Playlist {
     description: playlist.description || null,
     owner,
     tracks,
+    images: playlist.images.map(transformImage),
+    externalUrl: playlist.external_urls.spotify,
+  };
+}
+
+/**
+ * Transforms a Spotify SDK SimplifiedPlaylist to musix.js SimplifiedPlaylist.
+ * @param playlist - Spotify SDK SimplifiedPlaylist
+ * @returns musix.js SimplifiedPlaylist
+ */
+function transformSimplifiedPlaylist(
+  playlist: SpotifySimplifiedPlaylist,
+): SimplifiedPlaylist {
+  const owner: User = {
+    id: playlist.owner.id,
+    displayName: playlist.owner.display_name,
+  };
+
+  return {
+    id: playlist.id,
+    name: playlist.name,
+    description: playlist.description || null,
+    owner,
+    totalTracks: playlist.tracks?.total ?? 0,
     images: playlist.images.map(transformImage),
     externalUrl: playlist.external_urls.spotify,
   };
@@ -503,6 +529,51 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
           };
         },
         "artist",
+        query,
+      );
+    },
+
+    /**
+     * Searches for playlists matching the query.
+     * @param query - The search query string
+     * @param options - Optional search options (limit, offset)
+     * @returns Promise resolving to SearchResult containing simplified playlists
+     */
+    async searchPlaylists(
+      query: string,
+      options?: SearchOptions,
+    ): Promise<SearchResult<SimplifiedPlaylist>> {
+      // Apply default values and constraints
+      // Limit is capped at 50 (Spotify API max), cast to SDK's expected literal union type
+      const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
+      const offset = options?.offset ?? 0;
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          // Call Spotify SDK search API
+          const searchResults = await sdk.search(
+            query,
+            ["playlist"],
+            undefined,
+            limit,
+            offset,
+          );
+
+          // Transform Spotify playlists to musix.js SimplifiedPlaylist type
+          // Note: SDK types return PlaylistBase but API actually returns SimplifiedPlaylist with tracks
+          const playlists = (
+            searchResults.playlists.items as SpotifySimplifiedPlaylist[]
+          ).map(transformSimplifiedPlaylist);
+
+          return {
+            items: playlists,
+            total: searchResults.playlists.total,
+            limit,
+            offset,
+          };
+        },
+        "playlist",
         query,
       );
     },
