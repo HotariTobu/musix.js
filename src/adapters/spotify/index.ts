@@ -263,6 +263,42 @@ function transformError(
 }
 
 /**
+ * Executes an API call with automatic token refresh on 401 errors.
+ * If the first call fails with 401, clears the token cache and retries once.
+ * If the retry also fails with 401, the error is propagated.
+ *
+ * @param sdk - The SpotifyApi SDK instance
+ * @param apiCall - The API call to execute
+ * @param resourceType - The type of resource being accessed (for error messages)
+ * @param resourceId - The ID of the resource being accessed (for error messages)
+ * @returns The result of the API call
+ */
+async function executeWithTokenRefresh<T>(
+  sdk: ReturnType<typeof SpotifyApi.withClientCredentials>,
+  apiCall: () => Promise<T>,
+  resourceType: "track" | "album" | "artist" | "playlist",
+  resourceId: string,
+): Promise<T> {
+  try {
+    return await apiCall();
+  } catch (error) {
+    // Check if this is a 401 error (potential token expiration)
+    if (isHttpError(error) && error.status === 401) {
+      // Clear the cached token and retry once
+      sdk.logOut();
+      try {
+        return await apiCall();
+      } catch (retryError) {
+        // If retry also fails, throw the appropriate error
+        throw transformError(retryError, resourceType, resourceId);
+      }
+    }
+    // For non-401 errors, throw immediately without retry
+    throw transformError(error, resourceType, resourceId);
+  }
+}
+
+/**
  * Creates a Spotify adapter instance using the official Spotify Web API SDK.
  * Uses Client Credentials Flow for authentication.
  *
@@ -298,12 +334,15 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
      * @throws {NotFoundError} If the track does not exist
      */
     async getTrack(id: string): Promise<Track> {
-      try {
-        const spotifyTrack = await sdk.tracks.get(id);
-        return transformTrack(spotifyTrack);
-      } catch (error) {
-        throw transformError(error, "track", id);
-      }
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const spotifyTrack = await sdk.tracks.get(id);
+          return transformTrack(spotifyTrack);
+        },
+        "track",
+        id,
+      );
     },
 
     /**
@@ -321,28 +360,31 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
       const limit = Math.min(options?.limit ?? 20, 50) as MaxInt<50>;
       const offset = options?.offset ?? 0;
 
-      try {
-        // Call Spotify SDK search API
-        const searchResults = await sdk.search(
-          query,
-          ["track"],
-          undefined,
-          limit,
-          offset,
-        );
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          // Call Spotify SDK search API
+          const searchResults = await sdk.search(
+            query,
+            ["track"],
+            undefined,
+            limit,
+            offset,
+          );
 
-        // Transform Spotify tracks to musix.js Track type
-        const tracks = searchResults.tracks.items.map(transformTrack);
+          // Transform Spotify tracks to musix.js Track type
+          const tracks = searchResults.tracks.items.map(transformTrack);
 
-        return {
-          items: tracks,
-          total: searchResults.tracks.total,
-          limit,
-          offset,
-        };
-      } catch (error) {
-        throw transformError(error, "track", query);
-      }
+          return {
+            items: tracks,
+            total: searchResults.tracks.total,
+            limit,
+            offset,
+          };
+        },
+        "track",
+        query,
+      );
     },
 
     /**
@@ -352,12 +394,15 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
      * @throws {NotFoundError} If the album does not exist
      */
     async getAlbum(id: string): Promise<Album> {
-      try {
-        const spotifyAlbum = await sdk.albums.get(id);
-        return transformAlbum(spotifyAlbum);
-      } catch (error) {
-        throw transformError(error, "album", id);
-      }
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const spotifyAlbum = await sdk.albums.get(id);
+          return transformAlbum(spotifyAlbum);
+        },
+        "album",
+        id,
+      );
     },
 
     /**
@@ -367,12 +412,15 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
      * @throws {NotFoundError} If the artist does not exist
      */
     async getArtist(id: string): Promise<Artist> {
-      try {
-        const spotifyArtist = await sdk.artists.get(id);
-        return transformArtist(spotifyArtist);
-      } catch (error) {
-        throw transformError(error, "artist", id);
-      }
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const spotifyArtist = await sdk.artists.get(id);
+          return transformArtist(spotifyArtist);
+        },
+        "artist",
+        id,
+      );
     },
 
     /**
@@ -382,12 +430,15 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
      * @throws {NotFoundError} If the playlist does not exist
      */
     async getPlaylist(id: string): Promise<Playlist> {
-      try {
-        const spotifyPlaylist = await sdk.playlists.getPlaylist(id);
-        return transformPlaylist(spotifyPlaylist);
-      } catch (error) {
-        throw transformError(error, "playlist", id);
-      }
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const spotifyPlaylist = await sdk.playlists.getPlaylist(id);
+          return transformPlaylist(spotifyPlaylist);
+        },
+        "playlist",
+        id,
+      );
     },
   };
 }

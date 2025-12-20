@@ -3194,12 +3194,19 @@ describe("getPlaylist", () => {
 // NFR-002: Error Handling
 describe("Error Handling [NFR-002]", () => {
   // Helper to create mocked adapter with custom SDK behavior
+  // Automatically adds logOut mock to support token refresh logic
   const createMockedAdapterWithError = (
-    mockImplementation: () => ReturnType<
-      typeof SpotifyApi.withClientCredentials
+    mockImplementation: () => Partial<
+      ReturnType<typeof SpotifyApi.withClientCredentials>
     >,
   ) => {
-    SpotifyApi.withClientCredentials = mock(mockImplementation);
+    SpotifyApi.withClientCredentials = mock(
+      () =>
+        ({
+          ...mockImplementation(),
+          logOut: mock(() => {}),
+        }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+    );
     const config: SpotifyConfig = {
       clientId: "test-client-id",
       clientSecret: "test-client-secret",
@@ -3987,6 +3994,448 @@ describe("Error Handling [NFR-002]", () => {
         expect((error as Error).stack).toBeDefined();
         expect((error as Error).stack?.length).toBeGreaterThan(0);
       }
+    });
+  });
+});
+
+// NFR-003: Token Auto Refresh [AC-011]
+describe("Token Auto Refresh [NFR-003]", () => {
+  // Helper to create mock that fails with 401 on first call, succeeds on second
+  const createMockWithTokenRefresh = (
+    successData: unknown,
+    mockSdkFactory: (
+      getMock: ReturnType<typeof mock>,
+      logOutMock: ReturnType<typeof mock>,
+    ) => ReturnType<typeof SpotifyApi.withClientCredentials>,
+  ) => {
+    let tokenCleared = false;
+    const logOutMock = mock(() => {
+      // Mark token as cleared - subsequent calls should succeed
+      tokenCleared = true;
+    });
+    const getMock = mock(async () => {
+      if (!tokenCleared) {
+        // First call: token expired, return 401
+        const error = new Error("Token expired") as Error & { status: number };
+        error.status = 401;
+        throw error;
+      }
+      // After logOut: new token obtained, return success
+      return successData;
+    });
+
+    SpotifyApi.withClientCredentials = mock(() =>
+      mockSdkFactory(getMock, logOutMock),
+    );
+
+    const config: SpotifyConfig = {
+      clientId: "test-client-id",
+      clientSecret: "test-client-secret",
+    };
+    return { adapter: createSpotifyAdapter(config), getMock, logOutMock };
+  };
+
+  // Helper to create mock that always fails with 401 (invalid credentials)
+  const createMockWithPersistent401 = (
+    mockSdkFactory: (
+      getMock: ReturnType<typeof mock>,
+      logOutMock: ReturnType<typeof mock>,
+    ) => ReturnType<typeof SpotifyApi.withClientCredentials>,
+  ) => {
+    const logOutMock = mock(() => {});
+    const getMock = mock(async () => {
+      const error = new Error("Invalid credentials") as Error & {
+        status: number;
+      };
+      error.status = 401;
+      throw error;
+    });
+
+    SpotifyApi.withClientCredentials = mock(() =>
+      mockSdkFactory(getMock, logOutMock),
+    );
+
+    const config: SpotifyConfig = {
+      clientId: "invalid-client-id",
+      clientSecret: "invalid-client-secret",
+    };
+    return { adapter: createSpotifyAdapter(config), getMock, logOutMock };
+  };
+
+  // AC-011: Token auto-refresh on getTrack
+  describe("getTrack with token refresh", () => {
+    test("should retry and succeed when token expires on first call", async () => {
+      // Given: Token expires on first API call
+      const mockTrack = createMockSpotifyTrack();
+      const { adapter, getMock, logOutMock } = createMockWithTokenRefresh(
+        mockTrack,
+        (getMock, logOutMock) =>
+          ({
+            tracks: { get: getMock },
+            logOut: logOutMock,
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+
+      // When: getTrack is called
+      const result = await adapter.getTrack("4iV5W9uYEdYUVa79Axb7Rh");
+
+      // Then: Request succeeds after token refresh
+      expect(result).toBeDefined();
+      expect(result.id).toBe("4iV5W9uYEdYUVa79Axb7Rh");
+      expect(result.name).toBe("Hotel California");
+      // Verify logOut was called to clear token
+      expect(logOutMock).toHaveBeenCalledTimes(1);
+      // Verify the API was called twice (first failed, second succeeded)
+      expect(getMock).toHaveBeenCalledTimes(2);
+    });
+
+    test("should not throw error to caller when token refresh succeeds", async () => {
+      // Given: Token expires on first call
+      const mockTrack = createMockSpotifyTrack();
+      const { adapter } = createMockWithTokenRefresh(
+        mockTrack,
+        (getMock, logOutMock) =>
+          ({
+            tracks: { get: getMock },
+            logOut: logOutMock,
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+
+      // When/Then: getTrack does not throw
+      await expect(
+        adapter.getTrack("4iV5W9uYEdYUVa79Axb7Rh"),
+      ).resolves.toBeDefined();
+    });
+
+    test("should throw AuthenticationError when credentials are truly invalid", async () => {
+      // Given: Credentials are invalid (401 persists after retry)
+      const { adapter, getMock } = createMockWithPersistent401(
+        (getMock, logOutMock) =>
+          ({
+            tracks: { get: getMock },
+            logOut: logOutMock,
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+
+      // When/Then: getTrack throws AuthenticationError
+      await expect(adapter.getTrack("track-id")).rejects.toThrow(
+        AuthenticationError,
+      );
+      // Verify retry was attempted (2 calls)
+      expect(getMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // AC-011: Token auto-refresh on searchTracks
+  describe("searchTracks with token refresh", () => {
+    test("should retry and succeed when token expires on first call", async () => {
+      // Given: Token expires on first search call
+      const mockSearchResult = {
+        tracks: {
+          items: [createMockSpotifyTrack()],
+          total: 100,
+          limit: 20,
+          offset: 0,
+        },
+      };
+      let tokenCleared = false;
+      const logOutMock = mock(() => {
+        tokenCleared = true;
+      });
+      const searchMock = mock(async () => {
+        if (!tokenCleared) {
+          const error = new Error("Token expired") as Error & {
+            status: number;
+          };
+          error.status = 401;
+          throw error;
+        }
+        return mockSearchResult;
+      });
+
+      SpotifyApi.withClientCredentials = mock(
+        () =>
+          ({
+            search: searchMock,
+            logOut: logOutMock,
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+
+      const adapter = createSpotifyAdapter({
+        clientId: "test-client-id",
+        clientSecret: "test-client-secret",
+      });
+
+      // When: searchTracks is called
+      const result = await adapter.searchTracks("hotel california");
+
+      // Then: Request succeeds after token refresh
+      expect(result).toBeDefined();
+      expect(result.items.length).toBe(1);
+      expect(logOutMock).toHaveBeenCalledTimes(1);
+      expect(searchMock).toHaveBeenCalledTimes(2);
+    });
+
+    test("should throw AuthenticationError when credentials are truly invalid on search", async () => {
+      // Given: Invalid credentials (401 persists)
+      const logOutMock = mock(() => {});
+      const searchMock = mock(async () => {
+        const error = new Error("Invalid credentials") as Error & {
+          status: number;
+        };
+        error.status = 401;
+        throw error;
+      });
+
+      SpotifyApi.withClientCredentials = mock(
+        () =>
+          ({
+            search: searchMock,
+            logOut: logOutMock,
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+
+      const adapter = createSpotifyAdapter({
+        clientId: "invalid-id",
+        clientSecret: "invalid-secret",
+      });
+
+      // When/Then: searchTracks throws AuthenticationError
+      await expect(adapter.searchTracks("query")).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+  });
+
+  // AC-011: Token auto-refresh on getAlbum
+  describe("getAlbum with token refresh", () => {
+    test("should retry and succeed when token expires on first call", async () => {
+      // Given: Token expires on first call
+      const mockAlbum = {
+        id: "2widuo17g5CEC66IbzveRu",
+        name: "Hotel California",
+        release_date: "1976-12-08",
+        total_tracks: 9,
+        images: [
+          { url: "https://example.com/image.jpg", width: 640, height: 640 },
+        ],
+        external_urls: {
+          spotify: "https://open.spotify.com/album/2widuo17g5CEC66IbzveRu",
+        },
+        artists: [
+          {
+            id: "0ECwFtbIWEVNwjlrfc6xoL",
+            name: "Eagles",
+            external_urls: {
+              spotify: "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+            },
+          },
+        ],
+      };
+      const { adapter, getMock, logOutMock } = createMockWithTokenRefresh(
+        mockAlbum,
+        (getMock, logOutMock) =>
+          ({
+            albums: { get: getMock },
+            logOut: logOutMock,
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+
+      // When: getAlbum is called
+      const result = await adapter.getAlbum("2widuo17g5CEC66IbzveRu");
+
+      // Then: Request succeeds after token refresh
+      expect(result).toBeDefined();
+      expect(result.id).toBe("2widuo17g5CEC66IbzveRu");
+      expect(logOutMock).toHaveBeenCalledTimes(1);
+      expect(getMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // AC-011: Token auto-refresh on getArtist
+  describe("getArtist with token refresh", () => {
+    test("should retry and succeed when token expires on first call", async () => {
+      // Given: Token expires on first call
+      const mockArtist = {
+        id: "0ECwFtbIWEVNwjlrfc6xoL",
+        name: "Eagles",
+        genres: ["rock", "classic rock"],
+        images: [
+          { url: "https://example.com/artist.jpg", width: 640, height: 640 },
+        ],
+        external_urls: {
+          spotify: "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+        },
+      };
+      const { adapter, getMock, logOutMock } = createMockWithTokenRefresh(
+        mockArtist,
+        (getMock, logOutMock) =>
+          ({
+            artists: { get: getMock },
+            logOut: logOutMock,
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+
+      // When: getArtist is called
+      const result = await adapter.getArtist("0ECwFtbIWEVNwjlrfc6xoL");
+
+      // Then: Request succeeds after token refresh
+      expect(result).toBeDefined();
+      expect(result.id).toBe("0ECwFtbIWEVNwjlrfc6xoL");
+      expect(logOutMock).toHaveBeenCalledTimes(1);
+      expect(getMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // AC-011: Token auto-refresh on getPlaylist
+  describe("getPlaylist with token refresh", () => {
+    test("should retry and succeed when token expires on first call", async () => {
+      // Given: Token expires on first call
+      const mockPlaylist = {
+        id: "37i9dQZF1DXcBWIGoYBM5M",
+        name: "Today's Top Hits",
+        description: "Top hits playlist",
+        owner: { id: "spotify", display_name: "Spotify" },
+        tracks: { items: [] },
+        images: [
+          { url: "https://example.com/playlist.jpg", width: 640, height: 640 },
+        ],
+        external_urls: {
+          spotify: "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M",
+        },
+      };
+      let tokenCleared = false;
+      const logOutMock = mock(() => {
+        tokenCleared = true;
+      });
+      const getPlaylistMock = mock(async () => {
+        if (!tokenCleared) {
+          const error = new Error("Token expired") as Error & {
+            status: number;
+          };
+          error.status = 401;
+          throw error;
+        }
+        return mockPlaylist;
+      });
+
+      SpotifyApi.withClientCredentials = mock(
+        () =>
+          ({
+            playlists: { getPlaylist: getPlaylistMock },
+            logOut: logOutMock,
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+
+      const adapter = createSpotifyAdapter({
+        clientId: "test-client-id",
+        clientSecret: "test-client-secret",
+      });
+
+      // When: getPlaylist is called
+      const result = await adapter.getPlaylist("37i9dQZF1DXcBWIGoYBM5M");
+
+      // Then: Request succeeds after token refresh
+      expect(result).toBeDefined();
+      expect(result.id).toBe("37i9dQZF1DXcBWIGoYBM5M");
+      expect(logOutMock).toHaveBeenCalledTimes(1);
+      expect(getPlaylistMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // Edge cases
+  describe("Token refresh edge cases", () => {
+    test("should only retry once on 401", async () => {
+      // Given: 401 persists after retry (truly invalid credentials)
+      let callCount = 0;
+      const logOutMock = mock(() => {});
+      const getMock = mock(async () => {
+        callCount++;
+        const error = new Error("Invalid credentials") as Error & {
+          status: number;
+        };
+        error.status = 401;
+        throw error;
+      });
+
+      SpotifyApi.withClientCredentials = mock(
+        () =>
+          ({
+            tracks: { get: getMock },
+            logOut: logOutMock,
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+
+      const adapter = createSpotifyAdapter({
+        clientId: "test-id",
+        clientSecret: "test-secret",
+      });
+
+      // When/Then: getTrack throws AuthenticationError after exactly 2 attempts
+      await expect(adapter.getTrack("track-id")).rejects.toThrow(
+        AuthenticationError,
+      );
+      expect(callCount).toBe(2); // Initial + 1 retry
+    });
+
+    test("should not retry on non-401 errors", async () => {
+      // Given: API returns 404 (not a token issue)
+      let callCount = 0;
+      const logOutMock = mock(() => {});
+      const getMock = mock(async () => {
+        callCount++;
+        const error = new Error("Not found") as Error & { status: number };
+        error.status = 404;
+        throw error;
+      });
+
+      SpotifyApi.withClientCredentials = mock(
+        () =>
+          ({
+            tracks: { get: getMock },
+            logOut: logOutMock,
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+
+      const adapter = createSpotifyAdapter({
+        clientId: "test-id",
+        clientSecret: "test-secret",
+      });
+
+      // When/Then: getTrack throws NotFoundError without retry
+      await expect(adapter.getTrack("invalid-id")).rejects.toThrow(
+        NotFoundError,
+      );
+      expect(callCount).toBe(1); // No retry
+      expect(logOutMock).not.toHaveBeenCalled();
+    });
+
+    test("should not call logOut on first successful request", async () => {
+      // Given: Token is valid, request succeeds on first try
+      const mockTrack = createMockSpotifyTrack();
+      const logOutMock = mock(() => {});
+      const getMock = mock(async () => mockTrack);
+
+      SpotifyApi.withClientCredentials = mock(
+        () =>
+          ({
+            tracks: { get: getMock },
+            logOut: logOutMock,
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+
+      const adapter = createSpotifyAdapter({
+        clientId: "test-id",
+        clientSecret: "test-secret",
+      });
+
+      // When: getTrack succeeds on first try
+      const result = await adapter.getTrack("track-id");
+
+      // Then: logOut should not be called
+      expect(result).toBeDefined();
+      expect(getMock).toHaveBeenCalledTimes(1);
+      expect(logOutMock).not.toHaveBeenCalled();
     });
   });
 });
