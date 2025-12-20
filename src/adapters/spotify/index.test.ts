@@ -12674,3 +12674,377 @@ describe("getRecommendations", () => {
     });
   });
 });
+
+// CH-028: Get Related Artists
+describe("getRelatedArtists", () => {
+  describe("AC-041: Get Related Artists [CH-028]", () => {
+    test("should return array of Artist objects when called with valid artistId", async () => {
+      // Given: Valid adapter with authentication
+      const mockRelatedArtist1 = {
+        id: "related-artist-1",
+        name: "Related Artist 1",
+        genres: ["rock", "alternative"],
+        external_urls: {
+          spotify: "https://open.spotify.com/artist/related-artist-1",
+        },
+        images: [
+          { url: "https://i.scdn.co/image/related1", width: 640, height: 640 },
+        ],
+        followers: { total: 500000 },
+        popularity: 75,
+      };
+      const mockRelatedArtist2 = {
+        id: "related-artist-2",
+        name: "Related Artist 2",
+        genres: ["indie", "rock"],
+        external_urls: {
+          spotify: "https://open.spotify.com/artist/related-artist-2",
+        },
+        images: [
+          { url: "https://i.scdn.co/image/related2", width: 640, height: 640 },
+        ],
+        followers: { total: 300000 },
+        popularity: 68,
+      };
+
+      const relatedArtistsMock = mock(async () => ({
+        artists: [mockRelatedArtist1, mockRelatedArtist2],
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        artists: {
+          relatedArtists: relatedArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRelatedArtists(artistId) is called
+      const result = await adapter.getRelatedArtists("seed-artist-id");
+
+      // Then: Returns array of Artist objects (up to 20)
+      expect(result).toBeArray();
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBeObject();
+      expect(result[0].id).toBe("related-artist-1");
+      expect(result[0].name).toBe("Related Artist 1");
+      expect(result[0].externalUrl).toBe(
+        "https://open.spotify.com/artist/related-artist-1",
+      );
+      expect(result[1].id).toBe("related-artist-2");
+      expect(result[1].name).toBe("Related Artist 2");
+
+      // Verify SDK was called with correct artistId
+      expect(relatedArtistsMock).toHaveBeenCalledTimes(1);
+      expect(relatedArtistsMock).toHaveBeenCalledWith("seed-artist-id");
+    });
+
+    test("should return up to 20 Artist objects", async () => {
+      // Given: Valid adapter with authentication and 20 related artists
+      const mockRelatedArtists = Array.from({ length: 20 }, (_, i) => ({
+        id: `related-artist-${i + 1}`,
+        name: `Related Artist ${i + 1}`,
+        genres: ["rock"],
+        external_urls: {
+          spotify: `https://open.spotify.com/artist/related-artist-${i + 1}`,
+        },
+        images: [],
+        followers: { total: 100000 },
+        popularity: 50,
+      }));
+
+      const relatedArtistsMock = mock(async () => ({
+        artists: mockRelatedArtists,
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        artists: {
+          relatedArtists: relatedArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRelatedArtists is called
+      const result = await adapter.getRelatedArtists("seed-artist-id");
+
+      // Then: Returns up to 20 Artist objects
+      expect(result).toBeArray();
+      expect(result).toHaveLength(20);
+    });
+
+    test("should return empty array when no related artists found", async () => {
+      // Given: Valid adapter with authentication, artist has no related artists
+      const relatedArtistsMock = mock(async () => ({
+        artists: [],
+      }));
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        artists: {
+          relatedArtists: relatedArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRelatedArtists is called for artist with no related artists
+      const result = await adapter.getRelatedArtists("obscure-artist-id");
+
+      // Then: Returns empty array
+      expect(result).toBeArray();
+      expect(result).toHaveLength(0);
+    });
+
+    test("should throw NotFoundError when artist does not exist", async () => {
+      // Given: Valid adapter with authentication, invalid artist ID
+      const relatedArtistsMock = mock(async () => {
+        const error = new Error("Not found") as Error & { status: number };
+        error.status = 404;
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        artists: {
+          relatedArtists: relatedArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRelatedArtists is called with invalid artist ID
+      // Then: NotFoundError is thrown
+      await expect(
+        adapter.getRelatedArtists("non-existent-artist-id"),
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    test("should throw AuthenticationError when not authenticated", async () => {
+      // Given: Adapter with invalid/expired authentication
+      const relatedArtistsMock = mock(async () => {
+        const error = new Error("Unauthorized") as Error & { status: number };
+        error.status = 401;
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        artists: {
+          relatedArtists: relatedArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRelatedArtists is called without valid authentication
+      // Then: AuthenticationError is thrown
+      await expect(adapter.getRelatedArtists("some-artist-id")).rejects.toThrow(
+        AuthenticationError,
+      );
+    });
+
+    test("should throw RateLimitError when rate limit is exceeded", async () => {
+      // Given: Rate limit exceeded
+      const relatedArtistsMock = mock(async () => {
+        const error = new Error("Rate limit exceeded") as Error & {
+          status: number;
+          headers?: Record<string, string>;
+        };
+        error.status = 429;
+        error.headers = { "retry-after": "30" };
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        artists: {
+          relatedArtists: relatedArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRelatedArtists is called and rate limit is exceeded
+      // Then: RateLimitError is thrown with retryAfter value
+      try {
+        await adapter.getRelatedArtists("some-artist-id");
+        throw new Error("Expected RateLimitError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(RateLimitError);
+        expect((err as RateLimitError).retryAfter).toBe(30);
+      }
+    });
+
+    test("should throw NetworkError when network error occurs", async () => {
+      // Given: Network error occurs
+      const relatedArtistsMock = mock(async () => {
+        throw new Error("Network error");
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        artists: {
+          relatedArtists: relatedArtistsMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-read-private"],
+      });
+
+      // When: getRelatedArtists is called and network error occurs
+      // Then: NetworkError is thrown
+      await expect(adapter.getRelatedArtists("some-artist-id")).rejects.toThrow(
+        NetworkError,
+      );
+    });
+  });
+});
