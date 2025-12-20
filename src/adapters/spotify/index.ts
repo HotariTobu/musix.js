@@ -988,8 +988,20 @@ export function createSpotifyUserAdapter(
         throw error;
       }
     },
-    async skipToNext() {
-      throw new Error("Not implemented");
+    async skipToNext(): Promise<void> {
+      try {
+        await sdk.player.skipToNext("");
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 403) {
+            throw new PremiumRequiredError();
+          }
+          if (error.status === 404) {
+            throw new NoActiveDeviceError();
+          }
+        }
+        throw error;
+      }
     },
     async skipToPrevious() {
       throw new Error("Not implemented");

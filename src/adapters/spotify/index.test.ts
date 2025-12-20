@@ -7685,4 +7685,143 @@ describe("createSpotifyUserAdapter", () => {
       await expect(adapter.pause()).rejects.toThrow(NoActiveDeviceError);
     });
   });
+
+  describe("AC-021: Skip to Next [CH-014]", () => {
+    test("should skip to next track on active device", async () => {
+      // Given: User is authenticated with Premium, playback is active
+      const skipToNextMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          skipToNext: skipToNextMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: skipToNext is called
+      await adapter.skipToNext();
+
+      // Then: SDK skipToNext is called
+      expect(skipToNextMock).toHaveBeenCalledWith("");
+    });
+
+    test("should throw PremiumRequiredError when user has no Premium", async () => {
+      // Given: User is authenticated without Premium (403 Forbidden)
+      const error = new Error("Forbidden") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 403;
+      error.headers = {};
+
+      const skipToNextMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          skipToNext: skipToNextMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: skipToNext is called
+      // Then: PremiumRequiredError is thrown
+      await expect(adapter.skipToNext()).rejects.toThrow(PremiumRequiredError);
+    });
+
+    test("should throw NoActiveDeviceError when no device is active", async () => {
+      // Given: User has Premium but no active device (404)
+      const error = new Error("No active device found") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 404;
+      error.headers = {};
+
+      const skipToNextMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          skipToNext: skipToNextMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: skipToNext is called
+      // Then: NoActiveDeviceError is thrown
+      await expect(adapter.skipToNext()).rejects.toThrow(NoActiveDeviceError);
+    });
+  });
 });
