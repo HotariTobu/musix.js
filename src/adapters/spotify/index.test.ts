@@ -18166,4 +18166,347 @@ describe("getPlaylistTracks", () => {
       );
     });
   });
+
+  describe("AC-053/AC-054: Set Volume [CH-038]", () => {
+    test("should set volume to specified percentage", async () => {
+      // Given: User is authenticated with Premium, playback is active
+      const setPlaybackVolumeMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          setPlaybackVolume: setPlaybackVolumeMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: setVolume(50) is called
+      await adapter.setVolume(50);
+
+      // Then: SDK setPlaybackVolume is called with percent and empty deviceId
+      expect(setPlaybackVolumeMock).toHaveBeenCalledWith(50, "");
+    });
+
+    test("should allow boundary value 0 (mute)", async () => {
+      // Given: User is authenticated with Premium
+      const setPlaybackVolumeMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          setPlaybackVolume: setPlaybackVolumeMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: setVolume(0) is called (mute)
+      await adapter.setVolume(0);
+
+      // Then: SDK setPlaybackVolume is called with 0
+      expect(setPlaybackVolumeMock).toHaveBeenCalledWith(0, "");
+    });
+
+    test("should allow boundary value 100 (max volume)", async () => {
+      // Given: User is authenticated with Premium
+      const setPlaybackVolumeMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          setPlaybackVolume: setPlaybackVolumeMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: setVolume(100) is called (max volume)
+      await adapter.setVolume(100);
+
+      // Then: SDK setPlaybackVolume is called with 100
+      expect(setPlaybackVolumeMock).toHaveBeenCalledWith(100, "");
+    });
+
+    test("should throw ValidationError when volume exceeds 100", async () => {
+      // Given: User is authenticated with Premium
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          setPlaybackVolume: mock(async () => {}),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: setVolume(150) is called (out of 0-100 range)
+      // Then: ValidationError is thrown
+      await expect(adapter.setVolume(150)).rejects.toThrow(ValidationError);
+    });
+
+    test("should throw ValidationError when volume is negative", async () => {
+      // Given: User is authenticated with Premium
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          setPlaybackVolume: mock(async () => {}),
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: setVolume(-10) is called (negative value)
+      // Then: ValidationError is thrown
+      await expect(adapter.setVolume(-10)).rejects.toThrow(ValidationError);
+    });
+
+    test("should throw PremiumRequiredError when user has no Premium", async () => {
+      // Given: User is authenticated without Premium (403 Forbidden)
+      const error = new Error("Forbidden") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 403;
+      error.headers = {};
+
+      const setPlaybackVolumeMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          setPlaybackVolume: setPlaybackVolumeMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: setVolume is called
+      // Then: PremiumRequiredError is thrown
+      await expect(adapter.setVolume(50)).rejects.toThrow(PremiumRequiredError);
+    });
+
+    test("should throw NoActiveDeviceError when no device is active", async () => {
+      // Given: User has Premium but no active device (404)
+      const error = new Error("No active device found") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 404;
+      error.headers = {};
+
+      const setPlaybackVolumeMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          setPlaybackVolume: setPlaybackVolumeMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: setVolume is called
+      // Then: NoActiveDeviceError is thrown
+      await expect(adapter.setVolume(50)).rejects.toThrow(NoActiveDeviceError);
+    });
+
+    test("should throw RateLimitError when rate limited", async () => {
+      // Given: API rate limit has been exceeded (429 response)
+      const error = new Error("Rate limit exceeded") as Error & {
+        status: number;
+        headers?: { "retry-after": string };
+      };
+      error.status = 429;
+      error.headers = { "retry-after": "60" };
+
+      const setPlaybackVolumeMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          setPlaybackVolume: setPlaybackVolumeMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: setVolume is called during rate limit
+      // Then: RateLimitError is thrown
+      await expect(adapter.setVolume(50)).rejects.toThrow(RateLimitError);
+    });
+  });
 });

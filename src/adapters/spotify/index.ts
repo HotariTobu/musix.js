@@ -1156,8 +1156,33 @@ export function createSpotifyUserAdapter(
         throw error;
       }
     },
-    async setVolume() {
-      throw new Error("Not implemented");
+    async setVolume(percent: number): Promise<void> {
+      // Validate volume range (0-100)
+      if (percent < 0 || percent > 100) {
+        throw new ValidationError(
+          `Volume must be between 0 and 100, received ${percent}`,
+        );
+      }
+
+      try {
+        await sdk.player.setPlaybackVolume(percent, "");
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 403) {
+            throw new PremiumRequiredError();
+          }
+          if (error.status === 404) {
+            throw new NoActiveDeviceError();
+          }
+          if (error.status === 429) {
+            const retryAfter = error.headers?.["retry-after"]
+              ? Number.parseInt(error.headers["retry-after"], 10)
+              : 60;
+            throw new RateLimitError(retryAfter);
+          }
+        }
+        throw error;
+      }
     },
     async setShuffle() {
       throw new Error("Not implemented");
