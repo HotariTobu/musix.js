@@ -1515,3 +1515,507 @@ describe("searchTracks", () => {
     });
   });
 });
+
+// AC-006: Album Retrieval [FR-004]
+describe("getAlbum", () => {
+  // Mock Spotify SDK album response data
+  const createMockSpotifyAlbum = (overrides: Record<string, unknown> = {}) => ({
+    id: "2widuo17g5CEC66IbzveRu",
+    name: "Hotel California",
+    release_date: "1976-12-08",
+    total_tracks: 9,
+    external_urls: {
+      spotify: "https://open.spotify.com/album/2widuo17g5CEC66IbzveRu",
+    },
+    artists: [
+      {
+        id: "0ECwFtbIWEVNwjlrfc6xoL",
+        name: "Eagles",
+        external_urls: {
+          spotify: "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+        },
+      },
+    ],
+    images: [
+      { url: "https://i.scdn.co/image/abc123", width: 640, height: 640 },
+      { url: "https://i.scdn.co/image/abc456", width: 300, height: 300 },
+      { url: "https://i.scdn.co/image/abc789", width: 64, height: 64 },
+    ],
+    ...overrides,
+  });
+
+  // Create mock SDK with configurable behavior for albums
+  const createMockSdkForAlbum = (
+    albumData: unknown = createMockSpotifyAlbum(),
+    shouldThrow = false,
+    errorStatus = 404,
+  ) => {
+    const mockGet = mock(async (id: string) => {
+      if (shouldThrow) {
+        const error = new Error("Not found") as Error & { status: number };
+        error.status = errorStatus;
+        throw error;
+      }
+      return albumData;
+    });
+
+    return {
+      albums: { get: mockGet },
+    };
+  };
+
+  // Helper to create adapter with mocked SDK for albums
+  const createMockedAdapterForAlbum = (
+    mockSdk: ReturnType<typeof createMockSdkForAlbum>,
+  ) => {
+    SpotifyApi.withClientCredentials = mock(
+      () =>
+        mockSdk as unknown as ReturnType<
+          typeof SpotifyApi.withClientCredentials
+        >,
+    );
+    const config: SpotifyConfig = {
+      clientId: "test-client-id",
+      clientSecret: "test-client-secret",
+    };
+    return createSpotifyAdapter(config);
+  };
+
+  describe("Successful Album Retrieval", () => {
+    // AC-006: Given valid auth config, When existing album ID, Then returns Album object
+    test("should return Album object with all required properties when album exists", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForAlbum();
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: getAlbum is called with existing album ID
+      const albumId = "2widuo17g5CEC66IbzveRu"; // Hotel California
+      const album = await adapter.getAlbum(albumId);
+
+      // Then: Album object is returned with required properties
+      expect(album).toBeDefined();
+      expect(album.id).toBe(albumId);
+      expect(typeof album.name).toBe("string");
+      expect(album.name.length).toBeGreaterThan(0);
+      expect(typeof album.externalUrl).toBe("string");
+      expect(album.externalUrl.length).toBeGreaterThan(0);
+    });
+
+    // AC-006: artists array contains at least one Artist object
+    test("should return Album with at least one artist", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForAlbum();
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: getAlbum is called
+      const album = await adapter.getAlbum("2widuo17g5CEC66IbzveRu");
+
+      // Then: artists array contains at least one Artist object
+      expect(Array.isArray(album.artists)).toBe(true);
+      expect(album.artists.length).toBeGreaterThan(0);
+      expect(album.artists[0]).toBeDefined();
+      expect(typeof album.artists[0].id).toBe("string");
+      expect(typeof album.artists[0].name).toBe("string");
+      expect(typeof album.artists[0].externalUrl).toBe("string");
+    });
+
+    // AC-006: totalTracks is positive integer
+    test("should return Album with positive totalTracks", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForAlbum();
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: getAlbum is called
+      const album = await adapter.getAlbum("2widuo17g5CEC66IbzveRu");
+
+      // Then: totalTracks is positive integer
+      expect(typeof album.totalTracks).toBe("number");
+      expect(album.totalTracks).toBeGreaterThan(0);
+      expect(Number.isInteger(album.totalTracks)).toBe(true);
+    });
+
+    // AC-006: images array is included
+    test("should return Album with images array", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForAlbum();
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: getAlbum is called
+      const album = await adapter.getAlbum("2widuo17g5CEC66IbzveRu");
+
+      // Then: images array is included
+      expect(Array.isArray(album.images)).toBe(true);
+
+      // If images exist, validate structure
+      if (album.images.length > 0) {
+        for (const image of album.images) {
+          expect(typeof image.url).toBe("string");
+          expect(image.width === null || typeof image.width === "number").toBe(
+            true,
+          );
+          expect(
+            image.height === null || typeof image.height === "number",
+          ).toBe(true);
+        }
+      }
+    });
+
+    // AC-006: Complete Album type structure validation
+    test("should return Album conforming to Album type", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForAlbum();
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: getAlbum is called
+      const album = await adapter.getAlbum("2widuo17g5CEC66IbzveRu");
+
+      // Then: Album conforms to Album interface
+      // Required string properties
+      expect(typeof album.id).toBe("string");
+      expect(typeof album.name).toBe("string");
+      expect(typeof album.externalUrl).toBe("string");
+
+      // Artists array with Artist objects
+      expect(Array.isArray(album.artists)).toBe(true);
+      expect(album.artists.length).toBeGreaterThan(0);
+      for (const artist of album.artists) {
+        expect(typeof artist.id).toBe("string");
+        expect(typeof artist.name).toBe("string");
+        expect(typeof artist.externalUrl).toBe("string");
+      }
+
+      // Release date
+      expect(typeof album.releaseDate).toBe("string");
+
+      // Total tracks
+      expect(typeof album.totalTracks).toBe("number");
+      expect(album.totalTracks).toBeGreaterThan(0);
+
+      // Images array
+      expect(Array.isArray(album.images)).toBe(true);
+    });
+
+    // AC-006: Multiple artists handling
+    test("should handle albums with multiple artists", async () => {
+      // Given: valid authentication config with mocked SDK returning multiple artists
+      const mockAlbum = createMockSpotifyAlbum({
+        artists: [
+          {
+            id: "artist1",
+            name: "Artist 1",
+            external_urls: { spotify: "https://open.spotify.com/artist/1" },
+          },
+          {
+            id: "artist2",
+            name: "Artist 2",
+            external_urls: { spotify: "https://open.spotify.com/artist/2" },
+          },
+          {
+            id: "artist3",
+            name: "Artist 3",
+            external_urls: { spotify: "https://open.spotify.com/artist/3" },
+          },
+        ],
+      });
+      const mockSdk = createMockSdkForAlbum(mockAlbum);
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: getAlbum is called for album with multiple artists
+      const album = await adapter.getAlbum("album-with-multiple-artists");
+
+      // Then: all artists are included
+      expect(Array.isArray(album.artists)).toBe(true);
+      expect(album.artists.length).toBe(3);
+      for (const artist of album.artists) {
+        expect(artist.id).toBeDefined();
+        expect(artist.name).toBeDefined();
+        expect(artist.externalUrl).toBeDefined();
+      }
+    });
+
+    // AC-006: Multiple images with different sizes
+    test("should return Album with multiple images of different sizes", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForAlbum();
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: getAlbum is called
+      const album = await adapter.getAlbum("2widuo17g5CEC66IbzveRu");
+
+      // Then: images array contains multiple images with different sizes
+      expect(album.images.length).toBeGreaterThan(0);
+      const imageSizes = album.images.map((img) => img.width);
+      expect(imageSizes).toContain(640);
+      expect(imageSizes).toContain(300);
+      expect(imageSizes).toContain(64);
+    });
+
+    // AC-006: Album with no images (edge case)
+    test("should handle albums with empty images array", async () => {
+      // Given: valid authentication config with mocked SDK returning no images
+      const mockAlbum = createMockSpotifyAlbum({ images: [] });
+      const mockSdk = createMockSdkForAlbum(mockAlbum);
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: getAlbum is called for album without images
+      const album = await adapter.getAlbum("album-without-images");
+
+      // Then: images is an empty array
+      expect(Array.isArray(album.images)).toBe(true);
+      expect(album.images.length).toBe(0);
+    });
+
+    // AC-006: Release date format
+    test("should return Album with releaseDate in string format", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForAlbum();
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: getAlbum is called
+      const album = await adapter.getAlbum("2widuo17g5CEC66IbzveRu");
+
+      // Then: releaseDate is a string
+      expect(typeof album.releaseDate).toBe("string");
+      expect(album.releaseDate.length).toBeGreaterThan(0);
+    });
+
+    // AC-006: External URL format validation
+    test("should return Album with valid Spotify external URL", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForAlbum();
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: getAlbum is called
+      const album = await adapter.getAlbum("2widuo17g5CEC66IbzveRu");
+
+      // Then: external URL should be valid Spotify URL
+      expect(album.externalUrl).toContain("spotify.com");
+      expect(album.externalUrl).toContain("album");
+      expect(album.artists[0].externalUrl).toContain("spotify.com");
+    });
+  });
+
+  describe("Error Handling - Not Found", () => {
+    // AC-006 Error: Given valid auth, When non-existent album ID, Then throws NotFoundError
+    test("should throw NotFoundError when album does not exist", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForAlbum(undefined, true, 404);
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When/Then: calling getAlbum with non-existent ID throws NotFoundError
+      const nonExistentId = "invalid-album-id-12345";
+      await expect(adapter.getAlbum(nonExistentId)).rejects.toThrow(
+        NotFoundError,
+      );
+    });
+
+    // AC-006 Error: resourceType is "album"
+    test("should throw NotFoundError with resourceType='album'", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForAlbum(undefined, true, 404);
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: calling getAlbum with non-existent ID
+      const nonExistentId = "invalid-album-id-12345";
+
+      // Then: error has resourceType='album'
+      try {
+        await adapter.getAlbum(nonExistentId);
+        throw new Error("Expected NotFoundError to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NotFoundError);
+        if (error instanceof NotFoundError) {
+          expect(error.resourceType).toBe("album");
+        }
+      }
+    });
+
+    // AC-006 Error: resourceId is the specified ID
+    test("should throw NotFoundError with correct resourceId", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForAlbum(undefined, true, 404);
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: calling getAlbum with non-existent ID
+      const nonExistentId = "test-invalid-album-999";
+
+      // Then: error has resourceId set to the requested ID
+      try {
+        await adapter.getAlbum(nonExistentId);
+        throw new Error("Expected NotFoundError to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NotFoundError);
+        if (error instanceof NotFoundError) {
+          expect(error.resourceId).toBe(nonExistentId);
+        }
+      }
+    });
+
+    // AC-006 Error: Error message format
+    test("should throw NotFoundError with formatted error message", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForAlbum(undefined, true, 404);
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: calling getAlbum with non-existent ID
+      const nonExistentId = "missing-album-123";
+
+      // Then: error message contains album and ID
+      try {
+        await adapter.getAlbum(nonExistentId);
+        throw new Error("Expected NotFoundError to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NotFoundError);
+        if (error instanceof NotFoundError) {
+          expect(error.message).toContain("album");
+          expect(error.message).toContain(nonExistentId);
+        }
+      }
+    });
+
+    // AC-006 Error: NotFoundError is catchable with instanceof
+    test("should be catchable using instanceof NotFoundError", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForAlbum(undefined, true, 404);
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When/Then: can catch using instanceof
+      try {
+        await adapter.getAlbum("non-existent-id");
+        throw new Error("Expected NotFoundError to be thrown");
+      } catch (error) {
+        const isNotFoundError = error instanceof NotFoundError;
+        expect(isNotFoundError).toBe(true);
+      }
+    });
+  });
+
+  describe("Edge Cases", () => {
+    // Edge case: Empty string ID
+    test("should handle empty string album ID gracefully", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404 for empty ID
+      const mockSdk = createMockSdkForAlbum(undefined, true, 404);
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When/Then: calling with empty string should throw error
+      await expect(adapter.getAlbum("")).rejects.toThrow();
+    });
+
+    // Edge case: Very long ID string
+    test("should handle very long album ID strings", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForAlbum(undefined, true, 404);
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: calling with very long ID
+      const longId = "a".repeat(1000);
+
+      // Then: should handle gracefully (likely NotFoundError)
+      await expect(adapter.getAlbum(longId)).rejects.toThrow();
+    });
+
+    // Edge case: Special characters in ID
+    test("should handle album IDs with special characters", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForAlbum(undefined, true, 404);
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: calling with special characters
+      const specialId = "album-!@#$%^&*()";
+
+      // Then: should handle gracefully
+      await expect(adapter.getAlbum(specialId)).rejects.toThrow();
+    });
+
+    // Edge case: Whitespace in ID
+    test("should handle album IDs with whitespace", async () => {
+      // Given: valid authentication config with mocked SDK that throws 404
+      const mockSdk = createMockSdkForAlbum(undefined, true, 404);
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: calling with whitespace
+      const idWithSpaces = "  album-id-with-spaces  ";
+
+      // Then: should handle gracefully
+      await expect(adapter.getAlbum(idWithSpaces)).rejects.toThrow();
+    });
+
+    // Edge case: Album with single track
+    test("should handle albums with totalTracks = 1", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockAlbum = createMockSpotifyAlbum({ total_tracks: 1 });
+      const mockSdk = createMockSdkForAlbum(mockAlbum);
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: getAlbum is called for single-track album
+      const album = await adapter.getAlbum("single-track-album");
+
+      // Then: totalTracks is 1
+      expect(album.totalTracks).toBe(1);
+    });
+
+    // Edge case: Album with many tracks
+    test("should handle albums with large totalTracks", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockAlbum = createMockSpotifyAlbum({ total_tracks: 100 });
+      const mockSdk = createMockSdkForAlbum(mockAlbum);
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: getAlbum is called for album with many tracks
+      const album = await adapter.getAlbum("large-album");
+
+      // Then: totalTracks is 100
+      expect(album.totalTracks).toBe(100);
+    });
+  });
+
+  describe("Multiple Calls", () => {
+    // Verify multiple calls work independently
+    test("should handle multiple sequential getAlbum calls", async () => {
+      // Given: valid authentication config with mocked SDK
+      const mockSdk = createMockSdkForAlbum();
+      const adapter = createMockedAdapterForAlbum(mockSdk);
+
+      // When: calling getAlbum multiple times
+      const album1 = await adapter.getAlbum("2widuo17g5CEC66IbzveRu");
+      const album2 = await adapter.getAlbum("2widuo17g5CEC66IbzveRu");
+
+      // Then: both calls succeed
+      expect(album1).toBeDefined();
+      expect(album2).toBeDefined();
+      expect(album1.id).toBe(album2.id);
+    });
+
+    // Verify different album IDs work
+    test("should retrieve different albums with different IDs", async () => {
+      // Given: valid authentication config with mocked SDK returning dynamic ID
+      const mockGet = mock(async (id: string) => {
+        return createMockSpotifyAlbum({ id });
+      });
+      SpotifyApi.withClientCredentials = mock(
+        () =>
+          ({
+            albums: { get: mockGet },
+          }) as unknown as ReturnType<typeof SpotifyApi.withClientCredentials>,
+      );
+      const config: SpotifyConfig = {
+        clientId: "test-client-id",
+        clientSecret: "test-client-secret",
+      };
+      const adapter = createSpotifyAdapter(config);
+
+      // When: calling getAlbum with different IDs
+      const albumId1 = "2widuo17g5CEC66IbzveRu";
+      const albumId2 = "different-album-id";
+
+      const album1 = await adapter.getAlbum(albumId1);
+      const album2 = await adapter.getAlbum(albumId2);
+
+      // Then: both calls succeed with correct IDs
+      expect(album1).toBeDefined();
+      expect(album1.id).toBe(albumId1);
+      expect(album2).toBeDefined();
+      expect(album2.id).toBe(albumId2);
+    });
+  });
+});

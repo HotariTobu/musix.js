@@ -1,6 +1,7 @@
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 import type {
   MaxInt,
+  Album as SpotifyAlbum,
   Image as SpotifyImage,
   SimplifiedAlbum as SpotifySimplifiedAlbum,
   SimplifiedArtist as SpotifySimplifiedArtist,
@@ -51,6 +52,23 @@ function transformSimplifiedArtist(artist: SpotifySimplifiedArtist): Artist {
  * @returns musix.js Album
  */
 function transformSimplifiedAlbum(album: SpotifySimplifiedAlbum): Album {
+  return {
+    id: album.id,
+    name: album.name,
+    artists: album.artists.map(transformSimplifiedArtist),
+    releaseDate: album.release_date,
+    totalTracks: album.total_tracks,
+    images: album.images.map(transformImage),
+    externalUrl: album.external_urls.spotify,
+  };
+}
+
+/**
+ * Transforms a Spotify SDK full Album to musix.js Album.
+ * @param album - Spotify SDK Album
+ * @returns musix.js Album
+ */
+function transformAlbum(album: SpotifyAlbum): Album {
   return {
     id: album.id,
     name: album.name,
@@ -167,9 +185,22 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
      * Retrieves an album by its Spotify ID.
      * @param id - The Spotify album ID
      * @returns Promise resolving to Album object
+     * @throws {NotFoundError} If the album does not exist
      */
     async getAlbum(id: string): Promise<Album> {
-      throw new Error("Not implemented");
+      try {
+        const spotifyAlbum = await sdk.albums.get(id);
+        return transformAlbum(spotifyAlbum);
+      } catch (error) {
+        // Check if it's a 404 error (album not found)
+        if (error && typeof error === "object" && "status" in error) {
+          if (error.status === 404) {
+            throw new NotFoundError("album", id);
+          }
+        }
+        // Re-throw any other errors
+        throw error;
+      }
     },
 
     /**

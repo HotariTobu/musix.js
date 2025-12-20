@@ -5,7 +5,7 @@
     { "id": "FR-001", "passes": true },
     { "id": "FR-002", "passes": true },
     { "id": "FR-003", "passes": true },
-    { "id": "FR-004", "passes": false },
+    { "id": "FR-004", "passes": true },
     { "id": "FR-005", "passes": false },
     { "id": "FR-006", "passes": false },
     { "id": "NFR-001", "passes": false },
@@ -13,5 +13,5 @@
     { "id": "NFR-003", "passes": false }
   ],
   "blockers": [],
-  "notes": "FR-003 complete. searchTracks implemented with pagination (limit/offset) and limit capping at 50. Next: FR-004 (getAlbum)."
+  "notes": "FR-004 complete. getAlbum implemented with transformAlbum for full SDK Album type and NotFoundError handling. 19 new tests covering AC-006. Next: FR-005 (getArtist)."
 }
