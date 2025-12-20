@@ -1525,8 +1525,24 @@ export function createSpotifyUserAdapter(
         throw new NetworkError(String(error));
       }
     },
-    async getRelatedArtists() {
-      throw new Error("Not implemented");
+    /**
+     * Get related artists for a given artist.
+     * @param artistId - The Spotify ID for the artist
+     * @returns Array of Artist objects (up to 20)
+     * @throws {NotFoundError} If the artist is not found
+     * @throws {AuthenticationError} If authentication fails
+     * @throws {RateLimitError} If rate limit is exceeded
+     */
+    async getRelatedArtists(artistId: string): Promise<Artist[]> {
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const response = await sdk.artists.relatedArtists(artistId);
+          return response.artists.map(transformArtist);
+        },
+        "artist",
+        artistId,
+      );
     },
     async getNewReleases() {
       throw new Error("Not implemented");

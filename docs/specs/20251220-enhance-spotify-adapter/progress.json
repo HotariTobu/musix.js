@@ -29,7 +29,7 @@
     { "id": "CH-025", "passes": true },
     { "id": "CH-026", "passes": true },
     { "id": "CH-027", "passes": true },
-    { "id": "CH-028", "passes": false },
+    { "id": "CH-028", "passes": true },
     { "id": "CH-029", "passes": false },
     { "id": "CH-030", "passes": false },
     { "id": "CH-031", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "Session ended 2025-12-21. 27/42 requirements passing. All Batch Retrieval (CH-001~003), Extended Search (CH-004~006), Related Data (CH-007~009), User Auth (CH-010~011), Playback Control (CH-012~019), User Library (CH-020~026), and first Discovery method (CH-027) complete. Next session should start with CH-028 (getRelatedArtists) - implement via sdk.artists.relatedArtists(). Remaining: Discovery features (CH-028~032), Playlist Management (CH-033~037), Extended Playback Control (CH-038~042)."
+  "notes": "Session ended 2025-12-21. 28/42 requirements passing. CH-028 (getRelatedArtists) implemented with full test coverage for success/error cases. Next session should start with CH-029 (getNewReleases) - implement via sdk.browse.getNewReleases(). Remaining: Discovery (CH-029~032), Playlist Management (CH-033~037), Extended Playback Control (CH-038~042)."
 }
