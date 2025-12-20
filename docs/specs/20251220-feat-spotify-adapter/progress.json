@@ -13,5 +13,5 @@
     { "id": "NFR-003", "passes": false }
   ],
   "blockers": [],
-  "notes": "FR-001 split into sub-tasks: FR-001a (project init - DONE), FR-001b (core types), FR-001c (adapter impl). Next: FR-001b."
+  "notes": "FR-001 split into sub-tasks: FR-001a (project init - DONE), FR-001b (core types - DONE), FR-001c (adapter impl). Next: FR-001c."
 }

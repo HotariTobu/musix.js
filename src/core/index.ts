@@ -1,2 +1,22 @@
-// Core types and errors - to be implemented in FR-001b
-export {};
+// Core types
+export type {
+  Image,
+  User,
+  Artist,
+  Album,
+  Track,
+  Playlist,
+  SearchOptions,
+  SearchResult,
+  SpotifyConfig,
+  SpotifyAdapter,
+} from "./types";
+
+// Error classes
+export {
+  AuthenticationError,
+  NotFoundError,
+  RateLimitError,
+  NetworkError,
+  SpotifyApiError,
+} from "./errors";
