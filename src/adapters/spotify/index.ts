@@ -491,6 +491,39 @@ export function createSpotifyAdapter(config: SpotifyConfig): SpotifyAdapter {
     },
 
     /**
+     * Retrieves multiple artists by their Spotify IDs.
+     * @param ids - Array of Spotify artist IDs (maximum 50)
+     * @returns Promise resolving to array of Artist objects
+     * @throws {ValidationError} If more than 50 IDs are provided
+     */
+    async getArtists(ids: string[]): Promise<Artist[]> {
+      // AC-059: Empty array handling - return early without API call
+      if (ids.length === 0) {
+        return [];
+      }
+
+      // AC-007: Validate maximum limit (Spotify allows max 50 artists)
+      if (ids.length > 50) {
+        throw new ValidationError(
+          `getArtists accepts maximum 50 IDs, received ${ids.length}`,
+        );
+      }
+
+      return executeWithTokenRefresh(
+        sdk,
+        async () => {
+          const spotifyArtists = await sdk.artists.get(ids);
+          // Filter out null values for invalid IDs
+          return spotifyArtists
+            .filter((artist): artist is SpotifyArtist => artist != null)
+            .map(transformArtist);
+        },
+        "artist",
+        ids.join(","),
+      );
+    },
+
+    /**
      * Retrieves a playlist by its Spotify ID.
      * @param id - The Spotify playlist ID
      * @returns Promise resolving to Playlist object

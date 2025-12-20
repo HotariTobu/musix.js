@@ -4,7 +4,7 @@
   "requirements": [
     { "id": "CH-001", "passes": true },
     { "id": "CH-002", "passes": true },
-    { "id": "CH-003", "passes": false },
+    { "id": "CH-003", "passes": true },
     { "id": "CH-004", "passes": false },
     { "id": "CH-005", "passes": false },
     { "id": "CH-006", "passes": false },
@@ -46,5 +46,5 @@
     { "id": "CH-042", "passes": false }
   ],
   "blockers": [],
-  "notes": "CH-001 (getTracks) and CH-002 (getAlbums) completed. Next session should start with CH-003 (getArtists) which follows the same batch retrieval pattern (max 50 IDs)."
+  "notes": "Batch retrieval complete (CH-001 to CH-003). Next session should start with CH-004 (searchAlbums) - first of the extended search methods."
 }
