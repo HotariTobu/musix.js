@@ -6297,4 +6297,191 @@ describe("Token Auto Refresh [NFR-003]", () => {
       });
     });
   });
+
+  describe("getArtistTopTracks", () => {
+    // Helper to create mock Spotify track for top tracks
+    const createMockTrack = (overrides: Record<string, unknown> = {}) => ({
+      id: "track-id",
+      name: "Test Track",
+      artists: [
+        {
+          id: "artist-id",
+          name: "Test Artist",
+          external_urls: {
+            spotify: "https://open.spotify.com/artist/artist-id",
+          },
+        },
+      ],
+      album: {
+        id: "album-id",
+        name: "Test Album",
+        artists: [
+          {
+            id: "artist-id",
+            name: "Test Artist",
+            external_urls: {
+              spotify: "https://open.spotify.com/artist/artist-id",
+            },
+          },
+        ],
+        release_date: "2024-01-15",
+        total_tracks: 12,
+        images: [
+          { url: "https://i.scdn.co/image/abc123", width: 640, height: 640 },
+        ],
+        external_urls: {
+          spotify: "https://open.spotify.com/album/album-id",
+        },
+      },
+      duration_ms: 210000,
+      preview_url: "https://p.scdn.co/mp3-preview/abc123",
+      external_urls: {
+        spotify: "https://open.spotify.com/track/track-id",
+      },
+      ...overrides,
+    });
+
+    // AC-013: Get Artist Top Tracks
+    describe("AC-013: Get Artist Top Tracks", () => {
+      test("should return array of Track objects", async () => {
+        // Given: Valid adapter with authentication
+        const mockTrack1 = createMockTrack({
+          id: "track1",
+          name: "Top Track 1",
+        });
+        const mockTrack2 = createMockTrack({
+          id: "track2",
+          name: "Top Track 2",
+        });
+        const mockResponse = { tracks: [mockTrack1, mockTrack2] };
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              artists: {
+                topTracks: mock(async () => mockResponse),
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getArtistTopTracks is called
+        const result = await adapter.getArtistTopTracks("artist-id", "US");
+
+        // Then: Array of Track objects is returned
+        expect(Array.isArray(result)).toBe(true);
+        expect(result.length).toBe(2);
+        expect(result[0].id).toBe("track1");
+        expect(result[0].name).toBe("Top Track 1");
+        expect(result[1].id).toBe("track2");
+      });
+
+      test("should pass artistId and market to SDK", async () => {
+        // Given: Valid adapter with authentication
+        const mockResponse = { tracks: [] };
+        const topTracksMock = mock(async () => mockResponse);
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              artists: {
+                topTracks: topTracksMock,
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getArtistTopTracks is called with market
+        await adapter.getArtistTopTracks("artist-id", "JP");
+
+        // Then: SDK is called with artistId and market
+        expect(topTracksMock).toHaveBeenCalledWith("artist-id", "JP");
+      });
+
+      test("should return up to 10 tracks", async () => {
+        // Given: Valid adapter with authentication and 10 tracks
+        const mockTracks = Array.from({ length: 10 }, (_, i) =>
+          createMockTrack({ id: `track${i}`, name: `Track ${i}` }),
+        );
+        const mockResponse = { tracks: mockTracks };
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              artists: {
+                topTracks: mock(async () => mockResponse),
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getArtistTopTracks is called
+        const result = await adapter.getArtistTopTracks("artist-id", "US");
+
+        // Then: Up to 10 tracks are returned
+        expect(result.length).toBe(10);
+      });
+
+      test("should transform tracks to musix.js Track type", async () => {
+        // Given: Valid adapter with authentication
+        const mockTrack = createMockTrack({
+          id: "track-123",
+          name: "Popular Song",
+          duration_ms: 180000,
+          preview_url: "https://preview.url",
+        });
+        const mockResponse = { tracks: [mockTrack] };
+
+        SpotifyApi.withClientCredentials = mock(
+          () =>
+            ({
+              artists: {
+                topTracks: mock(async () => mockResponse),
+              },
+              logOut: mock(() => {}),
+            }) as unknown as ReturnType<
+              typeof SpotifyApi.withClientCredentials
+            >,
+        );
+
+        const adapter = createSpotifyAdapter({
+          clientId: "test-id",
+          clientSecret: "test-secret",
+        });
+
+        // When: getArtistTopTracks is called
+        const result = await adapter.getArtistTopTracks("artist-id", "US");
+
+        // Then: Track has all required musix.js properties
+        expect(result[0].id).toBe("track-123");
+        expect(result[0].name).toBe("Popular Song");
+        expect(result[0].durationMs).toBe(180000);
+        expect(result[0].previewUrl).toBe("https://preview.url");
+        expect(result[0].externalUrl).toBeDefined();
+        expect(result[0].artists).toBeDefined();
+        expect(result[0].album).toBeDefined();
+      });
+    });
+  });
 });
