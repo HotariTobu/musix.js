@@ -8565,4 +8565,229 @@ describe("createSpotifyUserAdapter", () => {
       expect(getAvailableDevicesMock).toHaveBeenCalled();
     });
   });
+
+  describe("AC-026: Transfer Playback [CH-019]", () => {
+    test("should transfer playback to specified device", async () => {
+      // Given: User is authenticated with Premium
+      const transferPlaybackMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          transferPlayback: transferPlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: transferPlayback(deviceId) is called
+      await adapter.transferPlayback("device-123");
+
+      // Then: SDK transferPlayback is called with device IDs array
+      expect(transferPlaybackMock).toHaveBeenCalledWith(["device-123"], false);
+    });
+
+    test("should transfer playback with play option set to true", async () => {
+      // Given: User is authenticated with Premium
+      const transferPlaybackMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          transferPlayback: transferPlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: transferPlayback(deviceId, true) is called
+      await adapter.transferPlayback("device-456", true);
+
+      // Then: SDK transferPlayback is called with play option true
+      expect(transferPlaybackMock).toHaveBeenCalledWith(["device-456"], true);
+    });
+
+    test("should transfer playback with play option set to false", async () => {
+      // Given: User is authenticated with Premium
+      const transferPlaybackMock = mock(async () => {});
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          transferPlayback: transferPlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: transferPlayback(deviceId, false) is called
+      await adapter.transferPlayback("device-789", false);
+
+      // Then: SDK transferPlayback is called with play option false
+      expect(transferPlaybackMock).toHaveBeenCalledWith(["device-789"], false);
+    });
+
+    test("should throw PremiumRequiredError when user has no Premium", async () => {
+      // Given: User is authenticated without Premium (403 Forbidden)
+      const error = new Error("Forbidden") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 403;
+      error.headers = {};
+
+      const transferPlaybackMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          transferPlayback: transferPlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: transferPlayback is called
+      // Then: PremiumRequiredError is thrown
+      await expect(adapter.transferPlayback("device-123")).rejects.toThrow(
+        PremiumRequiredError,
+      );
+    });
+
+    test("should throw NoActiveDeviceError when device not found", async () => {
+      // Given: User is authenticated but device does not exist (404 Not Found)
+      const error = new Error("No active device found") as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 404;
+      error.headers = {};
+
+      const transferPlaybackMock = mock(async () => {
+        throw error;
+      });
+
+      const mockSdk = {
+        currentUser: {
+          profile: mock(async () => ({
+            id: "user-123",
+            display_name: "Test User",
+            external_urls: {
+              spotify: "https://open.spotify.com/user/user-123",
+            },
+          })),
+        },
+        player: {
+          transferPlayback: transferPlaybackMock,
+        },
+        logOut: mock(() => {}),
+      };
+
+      SpotifyApi.withUserAuthorization = mock(
+        () =>
+          mockSdk as unknown as ReturnType<
+            typeof SpotifyApi.withUserAuthorization
+          >,
+      );
+
+      const { createSpotifyUserAdapter } = await import("./index");
+      const adapter = createSpotifyUserAdapter({
+        clientId: "test-client-id",
+        redirectUri: "http://localhost:3000/callback",
+        scopes: ["user-modify-playback-state"],
+      });
+
+      // When: transferPlayback is called
+      // Then: NoActiveDeviceError is thrown
+      await expect(
+        adapter.transferPlayback("non-existent-device"),
+      ).rejects.toThrow(NoActiveDeviceError);
+    });
+  });
 });

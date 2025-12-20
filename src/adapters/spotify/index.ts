@@ -1077,8 +1077,20 @@ export function createSpotifyUserAdapter(
         volumePercent: device.volume_percent ?? 0,
       }));
     },
-    async transferPlayback() {
-      throw new Error("Not implemented");
+    async transferPlayback(deviceId: string, play?: boolean): Promise<void> {
+      try {
+        await sdk.player.transferPlayback([deviceId], play ?? false);
+      } catch (error) {
+        if (isHttpError(error)) {
+          if (error.status === 403) {
+            throw new PremiumRequiredError();
+          }
+          if (error.status === 404) {
+            throw new NoActiveDeviceError();
+          }
+        }
+        throw error;
+      }
     },
     async setVolume() {
       throw new Error("Not implemented");
