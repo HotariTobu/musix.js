@@ -10,8 +10,23 @@ export type {
   SearchOptions,
   SearchResult,
   PaginatedResult,
+  CurrentUser,
+  Device,
+  PlaybackState,
+  PlayOptions,
+  SpotifyUserAuthConfig,
+  RecommendationSeeds,
+  RecommendationOptions,
+  RecentlyPlayedItem,
+  TimeRange,
+  TopItemsOptions,
+  CreatePlaylistOptions,
+  PlaylistDetails,
+  QueueState,
+  RepeatMode,
   SpotifyConfig,
   SpotifyAdapter,
+  SpotifyUserAdapter,
 } from "./types";
 
 // Error classes
@@ -21,4 +36,7 @@ export {
   RateLimitError,
   NetworkError,
   SpotifyApiError,
+  ValidationError,
+  PremiumRequiredError,
+  NoActiveDeviceError,
 } from "./errors";
